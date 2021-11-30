@@ -1,4 +1,5 @@
 import logging
+import os
 
 from aiogram import Bot, Dispatcher, executor, types, filters
 import aiogram.utils.exceptions
@@ -14,10 +15,12 @@ from db_models import *
 from dotenv import load_dotenv
 
 
-API_TOKEN = '2118355263:AAFW-Ntf0TKK1IaHdc3_nTOLRlK8XqX7vps'
+load_dotenv()
+
+API_TOKEN = os.getenv("API_TOKEN")
+
 
 logging.basicConfig(level=logging.INFO)
-
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
