@@ -7,7 +7,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 
 import inline_keyboards
 from inline_keyboards.keyboards import days_buttons
-from inline_keyboards.tools import get_pressed_inline_button
+from inline_keyboards.tools import get_pressed_inline_button, get_selected_inline_days
 
 from db_models import *
 
@@ -78,7 +78,8 @@ async def set_lecture_day_callback_handler(callback_query: types.CallbackQuery):
     pressed_inline_button = get_pressed_inline_button(inline_keyboard, callback_data)
 
     if callback_data == 'done':
-        print("Done! ")
+        selected_days = get_selected_inline_days(inline_keyboard)
+        print("Done! Selected days: ", selected_days)
 
         await LectureStates.normal.set()
 
