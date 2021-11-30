@@ -1,4 +1,6 @@
 from peewee import *
+from inline_keyboards.keyboards import days_buttons
+
 
 db = SqliteDatabase('lecture_bot.db')
 
@@ -38,7 +40,7 @@ LectureDay = Lecture.days.get_through_model()
 #     course = ForeignKeyField(Course)
 
 
-def make_tables():
+def db_init():
     db.create_tables([
         Course,
         Day,
@@ -46,7 +48,5 @@ def make_tables():
         LectureDay
     ])
 
-
-def test_join():
-    aa = Lecture.select().join(Day, on=(Lecture.lecture_name == Day.weekday)).where(Day.weekday == 'Sunday')
-    print(aa.get())
+    for day in days_buttons.values():
+        Day.create(weekday=day)
