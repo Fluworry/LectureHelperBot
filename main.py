@@ -5,9 +5,9 @@ from aiogram import Bot, Dispatcher, executor, types, filters
 import aiogram.utils.exceptions
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
-
+from aiogram.dispatcher import FSMContext
 import inline_keyboards
-from inline_keyboards.keyboards import days_buttons
+from inline_keyboards.keyboards import days_buttons, inverted_days_buttons
 from inline_keyboards.tools import get_pressed_inline_button, get_selected_inline_days
 
 from db_models import *
@@ -46,86 +46,110 @@ async def create_course_handler(message: types.ChatMemberUpdated):
 
 
 @dp.message_handler(lambda msg: msg.chat.type == 'group', state='*', commands=['newlect'])
-async def create_lecture_handler(message: types.Message):
+async def create_lecture_handler(message: types.Message, state: FSMContext):
+    await state.update_data(for_user=message.from_user.id)
+
     await LectureStates.waiting_for_title.set()
-    await message.reply(reply=False, text="Отправьте название лекции в ответ на это сообщение.")
+    await message.reply(text="Отправьте название лекции в ответ на это сообщение.")
 
 
 @dp.message_handler(state=LectureStates.waiting_for_title)
-async def set_lecture_title_handler(message: types.Message):
-    Lecture.create(lecture_name=message.text, course=Course.get(Course.course_id == message.chat.id))
-    print('Title: ', message.text)
+async def set_lecture_title_handler(message: types.Message, state: FSMContext):
+    from_user_state_data = await state.get_data('for_user')
 
-    await LectureStates.waiting_for_description.set()
-    await message.reply(reply=False, text="Отправьте описание лекции в ответ на это сообщение.\n"
-                                          "Может содержать ссылки и доп. информацию.")
+    if from_user_state_data['for_user'] == message.from_user.id:
+        Lecture.create(lecture_name=message.text, course=Course.get(Course.course_id == message.chat.id))
+        print('Title: ', message.text)
+
+        await LectureStates.waiting_for_description.set()
+        await message.reply(text="Отправьте описание лекции в ответ на это сообщение.\n"
+                                 "Может содержать ссылки и доп. информацию.")
 
 
 @dp.message_handler(state=LectureStates.waiting_for_description)
-async def set_lecture_description_handler(message: types.Message):
-    course = Course.get(Course.course_id == message.chat.id)
-    add_description_query = Lecture.update({Lecture.description: message.text}).where(Lecture.course == course)
-    add_description_query.execute()
+async def set_lecture_description_handler(message: types.Message, state: FSMContext):
+    from_user_state_data = await state.get_data('for_user')
 
-    print("Description: ", message.text)
+    if from_user_state_data['for_user'] == message.from_user.id:
+        course = Course.get(Course.course_id == message.chat.id)
+        add_description_query = Lecture.update({Lecture.description: message.text}).where(Lecture.course == course)
+        add_description_query.execute()
 
-    await LectureStates.waiting_for_day.set()
-    await message.reply(reply=False, reply_markup=inline_keyboards.keyboards.choose_days_inline_keyboard,
-                        text="Выберите день/дни проведения лекции.\n\n"
-                             "Чтобы для разных дней указать разное время, можно создать "
-                             "ещё одну лекцию, назначив другое время.")
+        print("Description: ", message.text)
+
+        await LectureStates.waiting_for_day.set()
+        await message.reply(reply_markup=inline_keyboards.keyboards.choose_days_inline_keyboard,
+                            text="Выберите день/дни проведения лекции.\n\n")
 
 
 @dp.callback_query_handler(state=LectureStates.waiting_for_day)
-async def set_lecture_day_callback_handler(callback_query: types.CallbackQuery):
-    message_text = callback_query.message.text
-    callback_data = callback_query.data
-    inline_keyboard = callback_query.message.reply_markup['inline_keyboard']
-    pressed_inline_button = get_pressed_inline_button(inline_keyboard, callback_data)
+async def set_lecture_day_callback_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    from_user_state_data = await state.get_data('for_user')
 
-    if callback_data == 'done':
-        selected_days = get_selected_inline_days(inline_keyboard)
-        print("Done! Selected days: ", selected_days)
-        course = Course.get(Course.course_id == callback_query.message.chat.id)
-        last_lecture_id = Lecture.select().order_by(Lecture.id.desc()).get()
-        lecture = Lecture.get(Lecture.course == course, Lecture.id == last_lecture_id)
+    if from_user_state_data['for_user'] == callback_query.from_user.id:
+        message_text = callback_query.message.text
+        callback_data = callback_query.data
+        inline_keyboard = callback_query.message.reply_markup['inline_keyboard']
+        pressed_inline_button = get_pressed_inline_button(inline_keyboard, callback_data)
 
-        if all(day in days_buttons.values() for day in selected_days):
-            for day in selected_days:
-                print(day)
-                lecture.days.add(Day.get(Day.weekday == day))
+        if callback_data == 'done':
+            selected_days = get_selected_inline_days(inline_keyboard)
+            print("Done! Selected days: ", selected_days)
+            course = Course.get(Course.course_id == callback_query.message.chat.id)
+            last_lecture_id = Lecture.select().order_by(Lecture.id.desc()).get()
+            lecture = Lecture.get(Lecture.course == course, Lecture.id == last_lecture_id)
 
-        for day in lecture.days:
-            print("Added new day in this lecture: ", day.weekday)
+            if all(day in days_buttons.values() for day in selected_days):
+                for day in selected_days:
+                    lecture.days.add(Day.get(Day.weekday == day))
 
-        await callback_query.answer("Готово")
-        await callback_query.message.edit_text(parse_mode='html',
-                                               text="Отправьте время начала лекции в ответ на это сообщение.\n"
-                                                    "Например: <b>8:00</b>, <b>14:25</b> и так далее")
-        await LectureStates.waiting_for_time.set()
+            await callback_query.answer("Готово")
+            await callback_query.message.edit_text(parse_mode='html',
+                                                   text=f"Выбранные дни: {', '.join(selected_days)}\n"
+                                                        "Отправьте время для каждого дня в ответ на это сообщение, "
+                                                        "через запятую.\n\n"
+                                                        "Например вы можете указать <b>8:30, 13:00, 7:05</b>"
+                                                        " для понедельника, четверга и воскресенья соответственно.\n\n")
+            await LectureStates.waiting_for_time.set()
 
-    elif callback_data in days_buttons.keys():
+        elif callback_data in days_buttons.keys():
 
-        if pressed_inline_button['text'].endswith('✅'):
-            pressed_inline_button['text'] = pressed_inline_button['text'][:-1]
-            await callback_query.answer("День убран из расписания лекции")
-        else:
-            pressed_inline_button['text'] += " ✅"
-            await callback_query.answer("День добавлен в расписание лекции")
+            if pressed_inline_button['text'].endswith('✅'):
+                pressed_inline_button['text'] = pressed_inline_button['text'][:-1]
+                await callback_query.answer("День убран из расписания лекции")
+            else:
+                pressed_inline_button['text'] += " ✅"
+                await callback_query.answer("День добавлен в расписание лекции")
 
-        await callback_query.message.edit_text(reply_markup=callback_query.message.reply_markup,
-                                               text=message_text)
+            await callback_query.message.edit_text(reply_markup=callback_query.message.reply_markup,
+                                                   text=message_text)
 
 
 @dp.message_handler(state=LectureStates.waiting_for_time)
-async def set_lecture_time_handler(message: types.Message):
-    course = Course.get(Course.course_id == message.chat.id)
-    last_lecture_id = Lecture.select().order_by(Lecture.id.desc()).get()
-    lecture = Lecture.get(Lecture.course == course, Lecture.id == last_lecture_id)
+async def set_lecture_time_handler(message: types.Message, state: FSMContext):
+    from_user_state_data = await state.get_data('for_user')
 
-    if 5 >= len(message.text) > 3 and ':' in message.text:
-        time = message.text.split(':')
-        scheduler.add_job(lecture_notify, "cron", hour=time[0], minute=time[1], args=[dp, lecture])
+    if from_user_state_data['for_user'] == message.from_user.id:
+        course = Course.get(Course.course_id == message.chat.id)
+        last_lecture_id = Lecture.select().order_by(Lecture.id.desc()).get()
+        lecture = Lecture.get(Lecture.course == course, Lecture.id == last_lecture_id)
+
+        lecture_day_values = []
+        for day in lecture.days:
+            lecture_day_values.append(day.weekday)
+
+        lecture_time_values = message.text.replace(' ', '').split(',')
+
+        lecture_day_time_values = dict(zip(lecture_day_values, lecture_time_values))
+
+        for day, time in lecture_day_time_values.items():
+            hour = time.split(':')[0]
+            minute = time.split(':')[1]
+            scheduler.add_job(lecture_notify, 'cron', day_of_week=inverted_days_buttons[day], hour=hour, minute=minute,
+                              args=[dp, lecture.lecture_name, lecture.description, message.chat.id])
+        print("Cron jobs started")
+        await message.reply(text="Готово")
+        await LectureStates.normal.set()
 
 if __name__ == '__main__':
     scheduler.start()
