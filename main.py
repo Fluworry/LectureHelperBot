@@ -96,8 +96,7 @@ async def set_lecture_day_callback_handler(callback_query: types.CallbackQuery, 
             selected_days = get_selected_inline_days(inline_keyboard)
             print("Done! Selected days: ", selected_days)
             course = Course.get(Course.course_id == callback_query.message.chat.id)
-            last_lecture_id = Lecture.select().order_by(Lecture.id.desc()).get()
-            lecture = Lecture.get(Lecture.course == course, Lecture.id == last_lecture_id)
+            lecture = Lecture.select().where(Lecture.course == course).order_by(Lecture.id.desc()).get()
 
             if all(day in days_buttons.values() for day in selected_days):
                 for day in selected_days:
@@ -131,8 +130,7 @@ async def set_lecture_time_handler(message: types.Message, state: FSMContext):
 
     if from_user_state_data['for_user'] == message.from_user.id:
         course = Course.get(Course.course_id == message.chat.id)
-        last_lecture_id = Lecture.select().order_by(Lecture.id.desc()).get()
-        lecture = Lecture.get(Lecture.course == course, Lecture.id == last_lecture_id)
+        lecture = Lecture.select().where(Lecture.course == course).order_by(Lecture.id.desc()).get()
 
         lecture_day_values = []
         for day in lecture.days:
@@ -145,7 +143,8 @@ async def set_lecture_time_handler(message: types.Message, state: FSMContext):
         for day, time in lecture_day_time_values.items():
             hour = time.split(':')[0]
             minute = time.split(':')[1]
-            scheduler.add_job(lecture_notify, 'cron', day_of_week=inverted_days_buttons[day], hour=hour, minute=minute,
+            scheduler.add_job(lecture_notify, 'cron', day_of_week=inverted_days_buttons[day],
+                              hour=hour, minute=minute,
                               args=[dp, lecture.lecture_name, lecture.description, message.chat.id])
         print("Cron jobs started")
         await message.reply(text="Готово")
