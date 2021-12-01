@@ -27,7 +27,6 @@ class Day(BaseModel):
 class Lecture(BaseModel):
     lecture_name = CharField(50)
     description = CharField(100, null=True)
-    time = TimeField(null=True)
     days = ManyToManyField(Day, backref='lectures')
     course = ForeignKeyField(Course)
 
