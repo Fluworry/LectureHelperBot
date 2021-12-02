@@ -1,1 +1,1 @@
-__all__ = ['keyboards', 'tools']
+__all__ = ['days_keyboard', 'edit_lectures_keyboard', 'tools']
