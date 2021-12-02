@@ -6,9 +6,10 @@ import aiogram.utils.exceptions
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
+
 import inline_keyboards
-from inline_keyboards.keyboards import days_buttons, inverted_days_buttons
-from inline_keyboards.tools import get_pressed_inline_button, get_selected_inline_days
+from inline_keyboards.days_keyboard import days_buttons, inverted_days_buttons
+from inline_keyboards.tools import *
 
 from db_models import *
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -19,7 +20,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_TOKEN = os.getenv("API_TOKEN")
-
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,17 +35,74 @@ class LectureStates(StatesGroup):
     waiting_for_day = State()
     waiting_for_time = State()
 
+    lecture_edit_choose = State()
+    lecture_edit = State()
+
 
 @dp.my_chat_member_handler()
 async def create_course_handler(message: types.ChatMemberUpdated):
     Course.create(course_name=message.chat.title, course_id=message.chat.id)
     await bot.send_message(chat_id=message.chat.id, text="Lecture Helper Бот успешно добавлен в группу.\n"
                                                          "Данный бот рассылает уведомления о начале лекции.\n\n"
-                                                         "Администратор группы может добавить новые "
-                                                         "лекции в расписание используя команду /newlect")
+                                                         "Добавить новые лекции в расписание можно командой /addlect")
 
 
-@dp.message_handler(lambda msg: msg.chat.type == 'group', state='*', commands=['newlect'])
+@dp.message_handler(lambda msg: msg.chat.type == 'group', state='*', commands=['rmlect'])
+async def edit_lecture_choose_handler(message: types.Message, state: FSMContext):
+    await state.update_data(for_user=message.from_user.id)
+    await LectureStates.lecture_edit_choose.set()
+
+    course = Course.get(Course.course_id == message.chat.id)
+    try:
+        lectures = Lecture.get(Lecture.course == course)
+    except DoesNotExist:
+        await message.reply(text="Вы ещё не создали ни одной лекции или удалили их.")
+        raise DoesNotExist
+    lecture_names = []
+    for lecture in lectures.select():
+        lecture_names.append(lecture.lecture_name)
+
+    await message.reply(text="Выберите лекцию, которую вы хотите удалить.",
+                        reply_markup=get_lecture_inline_names(lecture_names))
+
+
+@dp.callback_query_handler(state=LectureStates.lecture_edit_choose)
+async def edit_lecture_choose_callback_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    from_user_state_data = await state.get_data('for_user')
+    if from_user_state_data['for_user'] == callback_query.from_user.id:
+        await state.update_data(edit_lecture=callback_query.data)
+        await LectureStates.lecture_edit.set()
+        await callback_query.message.edit_text(text=f"Выберите нужное действие для лекции {callback_query.data}",
+                                               reply_markup=inline_keyboards.edit_lectures_keyboard.
+                                               edit_menu_inline_keyboard)
+
+
+@dp.callback_query_handler(state=LectureStates.lecture_edit)
+async def edit_lecture_callback_handler(callback_query: types.CallbackQuery, state: FSMContext):
+    from_user_state_data = await state.get_data('for_user')
+    if from_user_state_data['for_user'] == callback_query.from_user.id:
+        edit_lecture = await state.get_data()
+        edit_lecture = edit_lecture['edit_lecture']
+
+        if callback_query.data == 'delete':
+            course = Course.get(Course.course_id == callback_query.message.chat.id)
+            lecture = Lecture.get(Lecture.course == course, Lecture.lecture_name == edit_lecture)
+            for cron_job in lecture.cron_jobs.dicts():
+                if scheduler.get_job(cron_job['job_id']):
+                    scheduler.remove_job(job_id=cron_job['job_id'])
+                CronJob.delete().where(CronJob.job_id == cron_job['job_id']).execute()
+
+            lecture.delete_instance()
+            LectureDay.delete().where(LectureDay.lecture == lecture).execute()
+            LectureCronJob.delete().where(LectureCronJob.lecture == lecture).execute()
+            # Lecture.delete().where(Lecture.course == course, Lecture.lecture_name == edit_lecture).execute()
+            await callback_query.answer(text="Лекция удалена")
+            await callback_query.message.edit_text(text=f"Лекция {edit_lecture} удалена.")
+
+        await LectureStates.normal.set()
+
+
+@dp.message_handler(lambda msg: msg.chat.type == 'group', state='*', commands=['addlect'])
 async def create_lecture_handler(message: types.Message, state: FSMContext):
     await state.update_data(for_user=message.from_user.id)
 
@@ -58,7 +115,13 @@ async def set_lecture_title_handler(message: types.Message, state: FSMContext):
     from_user_state_data = await state.get_data('for_user')
 
     if from_user_state_data['for_user'] == message.from_user.id:
-        Lecture.create(lecture_name=message.text, course=Course.get(Course.course_id == message.chat.id))
+        try:
+            Lecture.create(lecture_name=message.text, course=Course.get(Course.course_id == message.chat.id))
+        except IntegrityError:
+            await message.reply(text="Лекция с таким названием уже существует\n"
+                                     "Выберите другое название и попробуйте ещё раз.")
+            raise IntegrityError
+
         print('Title: ', message.text)
 
         await LectureStates.waiting_for_description.set()
@@ -78,7 +141,7 @@ async def set_lecture_description_handler(message: types.Message, state: FSMCont
         print("Description: ", message.text)
 
         await LectureStates.waiting_for_day.set()
-        await message.reply(reply_markup=inline_keyboards.keyboards.choose_days_inline_keyboard,
+        await message.reply(reply_markup=inline_keyboards.days_keyboard.choose_days_inline_keyboard,
                             text="Выберите день/дни проведения лекции.\n\n")
 
 
@@ -140,15 +203,25 @@ async def set_lecture_time_handler(message: types.Message, state: FSMContext):
 
         lecture_day_time_values = dict(zip(lecture_day_values, lecture_time_values))
 
+        cron_jobs = []
         for day, time in lecture_day_time_values.items():
             hour = time.split(':')[0]
             minute = time.split(':')[1]
-            scheduler.add_job(lecture_notify, 'cron', day_of_week=inverted_days_buttons[day],
-                              hour=hour, minute=minute,
-                              args=[dp, lecture.lecture_name, lecture.description, message.chat.id])
+            job = scheduler.add_job(lecture_notify, 'cron',
+                                    day_of_week=inverted_days_buttons[day],
+                                    hour=hour, minute=minute,
+                                    args=[dp, lecture.lecture_name, lecture.description, message.chat.id])
+            cron_jobs.append({'job_id': job.id})
+        CronJob.insert_many(cron_jobs).execute()
+
+        for job in cron_jobs:
+            print('Adding job ' + str(job) + ' to cron_jobs')
+            lecture.cron_jobs.add(CronJob.get(CronJob.job_id == job['job_id']))
+
         print("Cron jobs started")
         await message.reply(text="Готово")
         await LectureStates.normal.set()
+
 
 if __name__ == '__main__':
     scheduler.start()
