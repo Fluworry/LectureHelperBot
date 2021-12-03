@@ -54,6 +54,12 @@ async def create_course_handler(message: types.ChatMemberUpdated):
                                                          "Добавить новые лекции в расписание можно командой /addlect")
 
 
+@dp.message_handler(lambda msg: msg.chat.type == 'private', state='*', commands=['start'])
+async def private_message_start_handler(message: types.Message):
+    await message.answer(text="Данный бот рассылает уведомления о начале лекции.\n"
+                              "Добавьте бота в группу.")
+
+
 @dp.message_handler(lambda msg: msg.chat.type == 'group', state='*', commands=['rmlect'])
 async def edit_lecture_choose_handler(message: types.Message, state: FSMContext):
     await state.update_data(for_user=message.from_user.id)
