@@ -14,9 +14,8 @@ from inline_keyboards.tools import *
 
 from db_models import *
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from cron_tools import lecture_notify
+from cron.cron_config import *
 from dotenv import load_dotenv
-
 
 load_dotenv()
 
@@ -26,7 +25,14 @@ logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot, storage=MemoryStorage())
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(config)
+
+
+async def lecture_notify(title, description, chat_id):
+    await bot.send_message(chat_id=chat_id, parse_mode='html',
+                           text=f"Уведомление о начале лекции:\n"
+                                f"<b>{title}</b>\n\n"
+                                f"{description}")
 
 
 class LectureStates(StatesGroup):
@@ -95,7 +101,6 @@ async def edit_lecture_callback_handler(callback_query: types.CallbackQuery, sta
             lecture.delete_instance()
             LectureDay.delete().where(LectureDay.lecture == lecture).execute()
             LectureCronJob.delete().where(LectureCronJob.lecture == lecture).execute()
-            # Lecture.delete().where(Lecture.course == course, Lecture.lecture_name == edit_lecture).execute()
             await callback_query.answer(text="Лекция удалена")
             await callback_query.message.edit_text(text=f"Лекция {edit_lecture} удалена.")
 
@@ -212,7 +217,7 @@ async def set_lecture_time_handler(message: types.Message, state: FSMContext):
             job = scheduler.add_job(lecture_notify, 'cron',
                                     day_of_week=inverted_days_buttons[day],
                                     hour=hour, minute=minute,
-                                    args=[dp, lecture.lecture_name, lecture.description, message.chat.id])
+                                    args=[lecture.lecture_name, lecture.description, message.chat.id])
             cron_jobs.append({'job_id': job.id})
         CronJob.insert_many(cron_jobs).execute()
 
