@@ -51,7 +51,9 @@ async def create_course_handler(message: types.ChatMemberUpdated):
     Course.create(course_name=message.chat.title, course_id=message.chat.id)
     await bot.send_message(chat_id=message.chat.id, text="Lecture Helper Бот успешно добавлен в группу.\n"
                                                          "Данный бот рассылает уведомления о начале лекции.\n\n"
-                                                         "Добавить новые лекции в расписание можно командой /addlect")
+                                                         "Добавить новые лекции можно командой /addlect\n"
+                                                         "Удалить лекции можно командой /rmlect\n"
+                                                         'Напишите "/", чтобы увидеть список доступных команд.')
 
 
 @dp.message_handler(lambda msg: msg.chat.type == 'private', state='*', commands=['start'])

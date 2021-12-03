@@ -12,8 +12,8 @@ class BaseModel(Model):
 
 
 class Course(BaseModel):
-    course_name = CharField()
-    course_id = IntegerField()
+    course_name = CharField(unique=True)
+    course_id = IntegerField(unique=True)
 
 
 # class User(BaseModel):
