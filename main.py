@@ -2,7 +2,7 @@ import logging
 import os
 
 from aiogram import Bot, Dispatcher, executor, types, filters
-import aiogram.utils.exceptions
+from aiogram.utils import markdown
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
@@ -46,20 +46,27 @@ class LectureStates(StatesGroup):
     lecture_edit = State()
 
 
-@dp.my_chat_member_handler()
+@dp.my_chat_member_handler(lambda msg: msg.chat.type == 'group')
 async def create_course_handler(message: types.ChatMemberUpdated):
-    Course.create(course_name=message.chat.title, course_id=message.chat.id)
-    await bot.send_message(chat_id=message.chat.id, text="Lecture Helper Бот успешно добавлен в группу.\n"
-                                                         "Данный бот рассылает уведомления о начале лекции.\n\n"
-                                                         "Добавить новые лекции можно командой /addlect\n"
-                                                         "Удалить лекции можно командой /rmlect\n"
-                                                         'Напишите "/", чтобы увидеть список доступных команд.')
+    try:
+        Course.create(course_name=message.chat.title, course_id=message.chat.id)
+    except IntegrityError:
+        print("Данный курс уже был создан")
+    await bot.send_message(chat_id=message.chat.id, parse_mode='markdown',
+                           text="Lecture Helper Бот успешно добавлен в группу.\n"
+                                "Данный бот рассылает уведомления о начале лекции.\n\n"
+                                "Добавить новые лекции можно командой /addlect\n"
+                                "Удалить лекции можно командой /rmlect\n"
+                                'Напишите "/", чтобы увидеть список доступных команд.\n\n'
+                                f"{markdown.link('Исходный код', 'https://gitlab.com/Xesium/LectureHelperBot')}")
 
 
 @dp.message_handler(lambda msg: msg.chat.type == 'private', state='*', commands=['start'])
 async def private_message_start_handler(message: types.Message):
-    await message.answer(text="Данный бот рассылает уведомления о начале лекции.\n"
-                              "Добавьте бота в группу.")
+    await message.answer(parse_mode='markdown',
+                         text="Данный бот рассылает уведомления о начале лекции.\n"
+                              "Добавьте бота в группу.\n\n"
+                              f"{markdown.link('Исходный код', 'https://gitlab.com/Xesium/LectureHelperBot')}")
 
 
 @dp.message_handler(lambda msg: msg.chat.type == 'group', state='*', commands=['rmlect'])
@@ -182,9 +189,9 @@ async def set_lecture_day_callback_handler(callback_query: types.CallbackQuery, 
 
             await callback_query.answer("Готово")
             await callback_query.message.edit_text(parse_mode='html',
-                                                   text=f"Выбранные дни: {', '.join(selected_days)}\n"
-                                                        "Отправьте время для каждого дня в ответ на это сообщение, "
-                                                        "через запятую.\n\n"
+                                                   text=f"Выбранные дни: {', '.join(selected_days)}\n\n"
+                                                        "Отправьте время для каждого дня в таком порядке, как "
+                                                        "перечислено выше, через запятую.\n\n"
                                                         "Например вы можете указать <b>8:30, 13:00, 7:05</b>"
                                                         " для понедельника, четверга и воскресенья соответственно.\n\n")
             await LectureStates.waiting_for_time.set()
