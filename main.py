@@ -58,7 +58,7 @@ async def create_course_handler(message: types.ChatMemberUpdated):
                                 "Добавить новые лекции можно командой /addlect\n"
                                 "Удалить лекции можно командой /rmlect\n"
                                 'Напишите "/", чтобы увидеть список доступных команд.\n\n'
-                                f"{markdown.link('Исходный код', 'https://gitlab.com/Xesium/LectureHelperBot')}")
+                                f"{markdown.link('Исходный код', 'https://gitlab.com/Luent/LectureHelperBot')}")
 
 
 @dp.message_handler(lambda msg: msg.chat.type == 'private', state='*', commands=['start'])
@@ -66,7 +66,7 @@ async def private_message_start_handler(message: types.Message):
     await message.answer(parse_mode='markdown',
                          text="Данный бот рассылает уведомления о начале лекции.\n"
                               "Добавьте бота в группу.\n\n"
-                              f"{markdown.link('Исходный код', 'https://gitlab.com/Xesium/LectureHelperBot')}")
+                              f"{markdown.link('Исходный код', 'https://gitlab.com/Luent/LectureHelperBot')}")
 
 
 @dp.message_handler(lambda msg: msg.chat.type == 'group', state='*', commands=['rmlect'])
