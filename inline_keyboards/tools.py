@@ -4,7 +4,7 @@ from functools import partial
 
 def get_pressed_inline_button(inline_keyboard, callback_data, row_count=2) -> dict:
     pressed_inline_button = {}
-
+    print(len(inline_keyboard))
     for row in range(row_count):
         current_row = tuple(dict(inline_keyboard[row]).values())
         if ('callback_data', callback_data) in current_row:

@@ -1,38 +1,16 @@
-import logging
-import os
-
-from aiogram import Bot, Dispatcher, executor, types, filters
+from aiogram import executor
 from aiogram.utils import markdown
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.dispatcher import FSMContext
 
 import inline_keyboards
-from inline_keyboards.days_keyboard import days_buttons, inverted_days_buttons
+from inline_keyboards.days_keyboard import inverted_days_buttons
 from inline_keyboards.edit_lectures_keyboard import edit_menu_inline_keyboard
 from inline_keyboards.tools import *
 
 from db_models import *
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from cron.cron_config import *
-from dotenv import load_dotenv
-
-load_dotenv()
-
-API_TOKEN = os.getenv("API_TOKEN")
-
-logging.basicConfig(level=logging.INFO)
-
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot, storage=MemoryStorage())
-scheduler = AsyncIOScheduler(config)
-
-
-async def lecture_notify(title, description, chat_id):
-    await bot.send_message(chat_id=chat_id, parse_mode='html',
-                           text=f"Уведомление о начале лекции:\n\n\n"
-                                f"<b>{title}</b>\n\n"
-                                f"{description}")
+from cron.cron_functions import *
+from loader import *
 
 
 class LectureStates(StatesGroup):
@@ -172,6 +150,7 @@ async def set_lecture_day_callback_handler(callback_query: types.CallbackQuery, 
     from_user_state_data = await state.get_data('for_user')
 
     if from_user_state_data['for_user'] == callback_query.from_user.id:
+        print("Pressed btn: ", callback_query.message)
         message_text = callback_query.message.text
         callback_data = callback_query.data
         inline_keyboard = callback_query.message.reply_markup['inline_keyboard']
@@ -233,6 +212,7 @@ async def set_lecture_time_handler(message: types.Message, state: FSMContext):
                                     day_of_week=inverted_days_buttons[day],
                                     hour=hour, minute=minute,
                                     args=[lecture.lecture_name, lecture.description, message.chat.id])
+
             cron_jobs.append({'job_id': job.id})
         CronJob.insert_many(cron_jobs).execute()
 
