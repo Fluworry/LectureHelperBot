@@ -24,7 +24,7 @@ class User(Base):
 
     groups = relationship(
         "Group", secondary=user_group_table, cascade="all, delete",
-        back_populates="users"
+        lazy="selectin", back_populates="users"
     )
     owned_groups = relationship("Group", back_populates="owner")
 
@@ -42,7 +42,10 @@ class Group(Base):
     owner = relationship("User", back_populates="owned_groups")
 
     lecture = relationship("Lecture")
-    users = relationship("User", secondary=user_group_table, back_populates="groups")
+    users = relationship(
+        "User", secondary=user_group_table, lazy="selectin", 
+        back_populates="groups"
+    )
 
 
 lecture_cronjob_table = Table(
