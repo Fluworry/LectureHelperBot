@@ -1,59 +1,138 @@
-from aiogram import executor, types
+from aiogram import types
 from aiogram.dispatcher import FSMContext
-from inline_keyboards.edit_lectures_keyboard import edit_menu_inline_keyboard
-from inline_keyboards.tools import *
+
+# from keyboards.inline import edit_menu_inline_keyboard
+from keyboards import generators
+from keyboards.handle_switchable import get_selected_buttons
+from keyboards.inline.manage import manage_own_group_kb
 
 from loader import scheduler
 
-from peewee import IntegrityError
-from db_models import *
+from db.models import Lecture, User, Group
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from states import LectureStates
 
 
-async def edit_lecture_choose_handler(message: types.Message, state: FSMContext):
-    await state.update_data(for_user=message.from_user.id)
-    await LectureStates.lecture_edit_choose.set()
+async def get_groups(db_session: Session, tg_user_id: int, own=False) -> types.InlineKeyboardMarkup:
+    async with db_session() as session:
+        stmt = select(User).where(
+            User.user_id == tg_user_id
+        )
 
-    course = Course.select().where(Course.course_id == message.chat.id).get()
+        if own:
+            stmt.options(selectinload(User.owned_groups))
+        else:
+            stmt.options(selectinload(User.groups))
 
-    lectures = Lecture.select().where(Lecture.course == course)
+        result = await session.execute(stmt)
+        user = result.scalar_one()
+        groups_kb = generators.get_groups_kb(user.groups)
+    return groups_kb
+
+
+async def show_groups_reply(message: types.Message):
+    db_session = message.bot.get("db")
+
+    answer_message = "Выберите группу"
+
+    if message.text == "Управление группами":
+        await LectureStates.manage_own_group.set()
+        groups_kb = await get_groups(db_session, message.from_user.id, own=True)
+        answer_message = "Выберите группу, чтобы добавить/убрать лекции"
+
+    elif message.text == "Мои группы":
+        await LectureStates.leave_group.set()
+        groups_kb = await get_groups(db_session, message.from_user.id)
+        answer_message = "Нажмите на группу, чтобы выйти из неё"
+    
+    await message.answer(answer_message, reply_markup=groups_kb)
+
+
+async def manage_own_group(callback_query: types.CallbackQuery, state: FSMContext):
+    db_session = callback_query.bot.get("db")
+
+    async with db_session() as session:
+        selected_group = await session.get(Group, int(callback_query.data))
+
+    await state.update_data({
+        "selected_group_id": int(callback_query.data), 
+        "selected_group_name": selected_group.name
+    })
+
+    await callback_query.answer("Вы выбрали группу")
+    await callback_query.message.edit_text(
+        f"Опции для группы {selected_group.name}", 
+        reply_markup=manage_own_group_kb
+    )
+
+
+async def leave_group(callback_query: types.CallbackQuery, state: FSMContext):
+    ...
+
+
+async def show_lectures(callback_query: types.CallbackQuery, state: FSMContext):
+    await LectureStates.lecture_edit.set()
+
+    state_data = await state.get_data()
+    group_id = state_data["selected_group_id"]
+
+    db_session = callback_query.bot.get("db")
+
+    async with db_session() as session:
+        stmt = select(Lecture).where(Lecture.group_id == group_id)
+        result = await session.execute(stmt)
+        lectures = result.scalars().all()
+
     if not lectures:
-        await message.reply(text="Вы ещё не создали ни одной лекции или удалили их.")
-    else:
-        lecture_names = []
-        for lecture in lectures:
-            lecture_names.append(lecture.lecture_name)
+        await callback_query.message.answer(
+            text="Вы ещё не создали ни одной лекции или удалили их."
+        )
+        return
 
-        await message.reply(text="Выберите лекцию, которую вы хотите удалить.",
-                            reply_markup=get_lecture_inline_names(lecture_names))
+    switchable_lectures_kb = generators.get_switchable_kb(
+        lectures, row_width=3, done_button_text="Удалить"
+    )
 
-async def edit_lecture_choose_callback_handler(callback_query: types.CallbackQuery, state: FSMContext):
-    from_user_state_data = await state.get_data('for_user')
-    if from_user_state_data['for_user'] == callback_query.from_user.id:
-        await state.update_data(edit_lecture=callback_query.data)
-        await LectureStates.lecture_edit.set()
-        await callback_query.message.edit_text(text=f"Выберите нужное действие для лекции {callback_query.data}",
-                                               reply_markup=edit_menu_inline_keyboard)
+    await callback_query.message.answer(
+        text="Выберите лекции, которые нужно удалить",
+        reply_markup=switchable_lectures_kb
+    )
 
-async def edit_lecture_callback_handler(callback_query: types.CallbackQuery, state: FSMContext):
-    from_user_state_data = await state.get_data('for_user')
-    if from_user_state_data['for_user'] == callback_query.from_user.id:
-        edit_lecture = await state.get_data()
-        edit_lecture = edit_lecture['edit_lecture']
 
-        if callback_query.data == 'delete':
-            course = Course.select().where(Course.course_id == callback_query.message.chat.id).get()
-            lecture = Lecture.select().where(Lecture.course == course, Lecture.lecture_name == edit_lecture).get()
-            for cron_job in lecture.cron_jobs.dicts():
-                if scheduler.get_job(cron_job['job_id']):
-                    scheduler.remove_job(job_id=cron_job['job_id'])
-                CronJob.delete().where(CronJob.job_id == cron_job['job_id']).execute()
-
-            lecture.delete_instance()
-            LectureDay.delete().where(LectureDay.lecture == lecture).execute()
-            LectureCronJob.delete().where(LectureCronJob.lecture == lecture).execute()
-            await callback_query.answer(text="Лекция удалена")
-            await callback_query.message.edit_text(text=f"Лекция {edit_lecture} удалена.")
-
+async def delete_lecture(callback_query: types.CallbackQuery, state: FSMContext):
+    if callback_query.data == "done":
         await LectureStates.normal.set()
+
+        selected_lectures = get_selected_buttons(
+            callback_query.message.reply_markup
+        )
+        # TODO: check if user is group owner, delete lectures
+
+        db_session = callback_query.bot.get("db")
+
+        async with db_session() as session:
+            for lecture_id in selected_lectures.keys():
+                lecture = await session.get(Lecture, lecture_id)
+
+                # TODO: CASCADE CronJob instead of manual deleting
+                for cronjob in lecture.cronjob:
+                    if scheduler.get_job(cronjob.job_id):
+                        scheduler.remove_job(cronjob.job_id)
+                    await session.delete(cronjob)
+                await session.delete(lecture)
+            
+            await session.commit()
+
+        await callback_query.answer(text="Лекции удалены")
+        await callback_query.message.edit_text(text=f"Лекции {', '.join(selected_lectures.values())} удалены.")
+        
+        return
+    
+    switchable_lectures_kb = generators.update_switchable_kb(
+        callback_query.message.reply_markup,
+        callback_query.data
+    )
+    await callback_query.message.edit_reply_markup(reply_markup=switchable_lectures_kb)

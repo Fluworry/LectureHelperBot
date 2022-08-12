@@ -1,7 +1,7 @@
 from aiogram import types
 from aiogram.utils import markdown
 from aiogram.utils.deep_linking import get_start_link
-from keyboards import reply, inline
+from keyboards.reply.default import default_kb
 
 from uuid import uuid4
 from loader import SOURCE_CODE_LINK
@@ -40,10 +40,11 @@ async def start_command(message: types.Message):
             group = result.scalar()
 
             if group is not None:
-                group.users.append(user)
+                # TODO: change group.users.append to user.groups.append
+                group.users.append(user)  
                 await session.commit()
 
-    await message.answer(parse_mode='markdown', reply_markup=reply.main_menu,
+    await message.answer(parse_mode='markdown', reply_markup=default_kb,
                          text="Данный бот рассылает уведомления о начале лекций всем участникам группы.\n"
                               "Пригласите бота в чат, чтобы создать собственную группу."
                               "Если вы хотите вступить в группу, перейдите по пригласительной ссылке.\n\n"
