@@ -3,7 +3,7 @@ from sqlalchemy.orm import declarative_base, relationship
 
 from loader import DB_USER, DB_PASS, DB_HOST, DB_NAME
 
-from keyboards.inline import days_buttons
+import keyboards.inline
 
 
 Base = declarative_base()
@@ -26,7 +26,7 @@ class User(Base):
         "Group", secondary=user_group_table, cascade="all, delete",
         lazy="selectin", back_populates="users"
     )
-    owned_groups = relationship("Group", back_populates="owner")
+    owned_groups = relationship("Group", lazy="selectin", back_populates="owner")
 
 
 class Group(Base):
@@ -41,7 +41,7 @@ class Group(Base):
     owner_id = Column(Integer, ForeignKey("user.id"))
     owner = relationship("User", back_populates="owned_groups")
 
-    lecture = relationship("Lecture")
+    lecture = relationship("Lecture", lazy="selectin")
     users = relationship(
         "User", secondary=user_group_table, lazy="selectin", 
         back_populates="groups"
@@ -67,7 +67,9 @@ class WeekDay(Base):
     __tablename__ = "weekday"
 
     id = Column(Integer, primary_key=True)
+    cron_name = Column(String(30))
     name = Column(String(30))
+
     lectures = relationship(
         "Lecture", secondary=lecture_weekday_table, cascade="all, delete",
         back_populates="weekday"
@@ -90,9 +92,10 @@ class Lecture(Base):
 
     group_id = Column(Integer, ForeignKey("group.id"))
     weekday = relationship(
-        "WeekDay", secondary=lecture_weekday_table, back_populates="lectures"
+        "WeekDay", secondary=lecture_weekday_table, lazy="selectin", 
+        back_populates="lectures"
     )
-    cronjob = relationship("CronJob", secondary=lecture_cronjob_table)
+    cronjob = relationship("CronJob", secondary=lecture_cronjob_table, lazy="selectin")
 
 
 def db_init():
@@ -107,8 +110,14 @@ def db_init():
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    for day in days_buttons.values():
-        session.add(WeekDay(name=day))
+    days = {
+        'mon': "Пн", 'tue': "Вт", 'wed': "Ср",
+        'thu': "Чт", 'fri': "Пт", 'sat': "Сб",
+        'sun': "Вс"
+    }
+
+    for cron_name, name in days.items():
+        session.add(WeekDay(cron_name=cron_name, name=name))
     
     session.commit()
     session.close()
