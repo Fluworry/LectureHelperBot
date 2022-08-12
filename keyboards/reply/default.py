@@ -7,7 +7,7 @@ from aiogram.types import ReplyKeyboardRemove, \
 #     [KeyboardButton('🔬 Мои курсы'), KeyboardButton('❓ Помощь')],
 #     ])
 
-main_menu = ReplyKeyboardMarkup(
+default_kb = ReplyKeyboardMarkup(
     resize_keyboard=True, keyboard=[
         ["Мои группы"],
         ["Управление группами", "Создать группу"],

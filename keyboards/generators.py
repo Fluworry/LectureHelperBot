@@ -2,19 +2,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from db.models import Group, WeekDay
 
 
-def get_weekdays_kb(weekdays: list[WeekDay]):
-    """ Generates menu from weekdays """
-    weekdays_kb = InlineKeyboardMarkup(row_width=4)
-
-    for weekday in weekdays:
-        weekdays_kb.insert(
-            InlineKeyboardButton(weekday.name, callback_data=f"{weekday.id}:f")
-        )
-    weekdays_kb.row(InlineKeyboardButton("Готово", callback_data="done"))
-
-    return weekdays_kb
-
-
 def get_groups_kb(groups: list[Group]) -> InlineKeyboardMarkup:
     """ Generates keyboard from groups """
     groups_kb = InlineKeyboardMarkup()
@@ -24,23 +11,30 @@ def get_groups_kb(groups: list[Group]) -> InlineKeyboardMarkup:
     return groups_kb
 
 
-def get_toggled_weekdays_kb(days_keyboard: InlineKeyboardMarkup, callback_data: str):
-    day_id = callback_data.split(':')[0]
-    button_status = callback_data.split(':')[1]
-    
-    if button_status == 'f':
-        toggled_callback_data = f"{day_id}:t"
-    else:
-        toggled_callback_data = f"{day_id}:f"
+def get_switchable_kb(entities: list, row_width=4, done_button_text="Готово") -> InlineKeyboardMarkup:
+    """ Generates keyboard from db entities """
+    entities_kb = InlineKeyboardMarkup(row_width)
 
-    for row in days_keyboard.inline_keyboard:
+    for entity in entities:
+        entities_kb.insert(
+            InlineKeyboardButton(entity.name, callback_data=f"{entity.id}:f")
+        )
+    entities_kb.row(InlineKeyboardButton(done_button_text, callback_data="done"))
+
+    return entities_kb
+
+
+def update_switchable_kb(keyboard: InlineKeyboardMarkup, callback_data: str) -> InlineKeyboardMarkup:
+    for row in keyboard.inline_keyboard:
         for button in row:
             if button.callback_data == callback_data:
-                button.callback_data = toggled_callback_data
+                callback_id, callback_status = button.callback_data.split(':')
 
-                if button.text[-1] == "✅":
-                    button.text = button.text.replace("✅", "")
+                if callback_status == 'f':
+                    button.callback_data = f"{callback_id}:t"
+                    button.text = "✅" + button.text
                 else:
-                    button.text = button.text + "✅"
+                    button.callback_data = f"{callback_id}:f"
+                    button.text = button.text.replace("✅", "")
 
-                return days_keyboard
+                return keyboard
