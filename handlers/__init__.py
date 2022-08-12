@@ -38,16 +38,9 @@ def setup(dp: Dispatcher):
         manage_own_group, state=LectureStates.manage_own_group
     )
 
-    # dp.register_callback_query_handler(show_lectures, 
-    #     ChatTypeFilter("private"), Text("delete_lecture"), state='*'
-    # )
-
-    
-
     dp.register_callback_query_handler(
         delete_lecture, state=LectureStates.lecture_edit
     )
-    # dp.register_callback_query_handler(edit_lecture_callback_handler, state=LectureStates.lecture_edit)
 
     dp.register_message_handler(set_lecture_name, state=LectureStates.waiting_for_name)
     dp.register_message_handler(set_lecture_description, state=LectureStates.waiting_for_description)

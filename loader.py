@@ -25,6 +25,7 @@ DB_PASS = os.getenv("DB_PASS")
 
 # Load some additional env variables
 SOURCE_CODE_LINK = os.getenv("SOURCE_CODE_LINK")
+TIMEZONE = os.getenv("TIMEZONE")  # Example: Europe/Kiev
 
 engine = create_async_engine(
     f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}",
@@ -37,5 +38,4 @@ async_sessionmaker = sessionmaker(
 bot = Bot(token=API_TOKEN)
 bot["db"] = async_sessionmaker
 dp = Dispatcher(bot, storage=MemoryStorage())
-scheduler = AsyncIOScheduler(cron_config.config)
-
+scheduler = AsyncIOScheduler(cron_config.config, timezone=TIMEZONE)
