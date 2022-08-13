@@ -16,36 +16,22 @@ from sqlalchemy.exc import IntegrityError, NoResultFound
 from states import LectureStates
 
 
-async def get_groups(db_session: Session, tg_user_id: int, own=False) -> types.InlineKeyboardMarkup:
-    async with db_session() as session:
-        stmt = select(User).where(
-            User.user_id == tg_user_id
-        )
-
-        if own:
-            stmt.options(selectinload(User.owned_groups))
-        else:
-            stmt.options(selectinload(User.groups))
-
-        result = await session.execute(stmt)
-        user = result.scalar_one()
-        groups_kb = generators.get_groups_kb(user.groups)
-    return groups_kb
-
-
 async def show_groups_reply(message: types.Message):
     db_session = message.bot.get("db")
+
+    async with db_session() as session:
+        user = await session.get(User, message.from_user.id)
 
     answer_message = "Выберите группу"
 
     if message.text == "Управление группами":
         await LectureStates.manage_own_group.set()
-        groups_kb = await get_groups(db_session, message.from_user.id, own=True)
+        groups_kb = generators.get_groups_kb(user.owned_groups)
         answer_message = "Выберите группу, чтобы добавить/убрать лекции"
 
     elif message.text == "Мои группы":
         await LectureStates.leave_group.set()
-        groups_kb = await get_groups(db_session, message.from_user.id)
+        groups_kb = generators.get_groups_kb(user.groups)
         answer_message = "Нажмите на группу, чтобы выйти из неё"
     
     await message.answer(answer_message, reply_markup=groups_kb)
@@ -109,7 +95,7 @@ async def delete_lecture(callback_query: types.CallbackQuery, state: FSMContext)
         selected_lectures = get_selected_buttons(
             callback_query.message.reply_markup
         )
-        # TODO: check if user is group owner, delete lectures
+        # TODO: check if user is group owner
 
         db_session = callback_query.bot.get("db")
 

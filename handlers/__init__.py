@@ -17,7 +17,7 @@ def setup(dp: Dispatcher):
     )
 
     dp.register_my_chat_member_handler(
-        create_group, ChatTypeFilter("group"), state='*'
+        create_group, ChatTypeFilter(["group", "supergroup"]), state='*'
     )
     
     dp.register_message_handler(

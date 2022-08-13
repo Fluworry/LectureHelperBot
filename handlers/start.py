@@ -18,18 +18,7 @@ async def start_command(message: types.Message):
     db_session = message.bot.get("db")
 
     async with db_session() as session:
-        try:
-            user = User(user_id=message.from_user.id)
-            session.add(user)
-            await session.commit()
-        except IntegrityError:
-            await session.rollback()
-            stmt = select(User).where(
-                User.user_id == message.from_user.id
-            )
-            
-            result = await session.execute(stmt)
-            user = result.scalar()
+        user = await session.merge(User(user_id=message.from_user.id))
 
         if invite_token:
             stmt = select(Group).where(
@@ -40,9 +29,8 @@ async def start_command(message: types.Message):
             group = result.scalar()
 
             if group is not None:
-                # TODO: change group.users.append to user.groups.append
-                group.users.append(user)  
-                await session.commit()
+                user.groups.append(group)
+        await session.commit()
 
     await message.answer(parse_mode='markdown', reply_markup=default_kb,
                          text="Данный бот рассылает уведомления о начале лекций всем участникам группы.\n"
@@ -65,22 +53,11 @@ async def create_group(member: types.ChatMemberUpdated):
         if current_group is None:
             invite_token = uuid4().hex[:15]
 
-            try:
-                stmt = select(User).where(
-                    User.user_id == member.from_user.id
-                ).options(selectinload(User.groups))
-                
-                result = await session.execute(stmt)
-                owner = result.scalar_one()
-            except NoResultFound:
-                owner = User(user_id=member.from_user.id)
-                session.add(owner)
-                await session.commit()
-                await session.refresh(owner)
+            owner = await session.merge(User(user_id=member.from_user.id))
 
             current_group = Group(
                 name=member.chat.title, invite_token=invite_token, 
-                chat_id=member.chat.id, owner_id=owner.id
+                chat_id=member.chat.id, owner_id=owner.user_id
             )
             session.add(current_group)
             owner.groups.append(current_group)
