@@ -11,7 +11,7 @@ Base = declarative_base()
 user_group_table = Table(
     "user_group",
     Base.metadata,
-    Column("user_id", ForeignKey("user.id"), primary_key=True),
+    Column("user_id", ForeignKey("user.user_id"), primary_key=True),
     Column("group_id", ForeignKey("group.id"), primary_key=True)
 )
 
@@ -19,9 +19,7 @@ user_group_table = Table(
 class User(Base):
     __tablename__ = "user"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(BigInteger, unique=True)
-
+    user_id = Column(BigInteger, primary_key=True)
     groups = relationship(
         "Group", secondary=user_group_table, cascade="all, delete",
         lazy="selectin", back_populates="users"
@@ -38,7 +36,7 @@ class Group(Base):
     invite_token = Column(String(15), unique=True)
     chat_id = Column(BigInteger, unique=True, nullable=True)
 
-    owner_id = Column(Integer, ForeignKey("user.id"))
+    owner_id = Column(BigInteger, ForeignKey("user.user_id"))
     owner = relationship("User", back_populates="owned_groups")
 
     lecture = relationship("Lecture", lazy="selectin")
