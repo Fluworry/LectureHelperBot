@@ -6,6 +6,7 @@ from cron import cron_config
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from middlewares.db import DbSessionMiddleware
 
 from dotenv import load_dotenv
 import os
@@ -31,11 +32,12 @@ engine = create_async_engine(
     f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}",
     future=True
 )
-async_sessionmaker = sessionmaker(
-    engine, class_=AsyncSession
-)
+db_pool = sessionmaker(engine, class_=AsyncSession)
 
 bot = Bot(token=API_TOKEN)
-bot["db"] = async_sessionmaker
 dp = Dispatcher(bot, storage=MemoryStorage())
+
+# TODO: move it to setup_middlewares function
+dp.middleware.setup(DbSessionMiddleware(db_pool))
+
 scheduler = AsyncIOScheduler(cron_config.config, timezone=TIMEZONE)

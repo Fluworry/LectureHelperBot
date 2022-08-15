@@ -5,8 +5,8 @@ from loader import *
 import handlers
 
 
-handlers.setup(dp)
-
 if __name__ == '__main__':
+    handlers.register_handlers(dp)
+
     scheduler.start()
     executor.start_polling(dp, skip_updates=True)
