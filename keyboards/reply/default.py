@@ -10,7 +10,6 @@ from aiogram.types import ReplyKeyboardRemove, \
 default_kb = ReplyKeyboardMarkup(
     resize_keyboard=True, keyboard=[
         ["Мои группы"],
-        ["Управление группами", "Создать группу"],
-        ["❓ Помощь"],
+        ["❓ Помощь", "Управление группами"],
     ]
 )
