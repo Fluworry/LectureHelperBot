@@ -1,72 +1,42 @@
 from aiogram import types
 from aiogram.utils import markdown
 from aiogram.utils.deep_linking import get_start_link
-from keyboards.reply.default import default_kb
 
-from uuid import uuid4
+from keyboards.reply.default import default_kb
 from loader import SOURCE_CODE_LINK
 
-from db.models import User, Group
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
-from sqlalchemy.exc import IntegrityError, NoResultFound
+from sqlalchemy.ext.asyncio import AsyncSession
+from db.requests import add_group, add_user, add_user_to_group
 
 
-async def start_command(message: types.Message):
+async def start_command(message: types.Message, session: AsyncSession):
     invite_token = message.get_args()
-    
-    db_session = message.bot.get("db")
+    user = await add_user(session, message.from_user.id)
 
-    async with db_session() as session:
-        user = await session.merge(User(user_id=message.from_user.id))
+    if invite_token:
+        await add_user_to_group(session, user, invite_token)
 
-        if invite_token:
-            stmt = select(Group).where(
-                Group.invite_token == invite_token
-            ).options(selectinload(Group.users))
+    await session.commit()
 
-            result = await session.execute(stmt)
-            group = result.scalar()
-
-            if group is not None:
-                user.groups.append(group)
-        await session.commit()
-
-    await message.answer(parse_mode='markdown', reply_markup=default_kb,
-                         text="Данный бот рассылает уведомления о начале лекций всем участникам группы.\n"
-                              "Пригласите бота в чат, чтобы создать собственную группу."
-                              "Если вы хотите вступить в группу, перейдите по пригласительной ссылке.\n\n"
-                              f"{markdown.link('Исходный код', SOURCE_CODE_LINK)}")
+    await message.answer(parse_mode='markdown', reply_markup=default_kb, 
+        text="Данный бот рассылает уведомления о начале лекций всем участникам группы.\n"
+            "Пригласите бота в чат, чтобы создать собственную группу."
+            "Если вы хотите вступить в группу, перейдите по пригласительной ссылке.\n\n"
+            f"{markdown.link('Исходный код', SOURCE_CODE_LINK)}")
 
 
-async def create_group(member: types.ChatMemberUpdated):
+async def create_group(member: types.ChatMemberUpdated, session: AsyncSession):
     if member.new_chat_member.status != 'member':  # TODO: make custom filter
         return
 
-    db_session = member.bot.get("db")
+    group = await add_group(
+        session, member.chat.title, 
+        member.from_user.id, member.chat.id
+    )
     
-    async with db_session() as session:
-        stmt = select(Group).where(Group.chat_id == member.chat.id)
-        result = await session.execute(stmt)
-        current_group = result.scalar()
-
-        if current_group is None:
-            invite_token = uuid4().hex[:15]
-
-            owner = await session.merge(User(user_id=member.from_user.id))
-
-            current_group = Group(
-                name=member.chat.title, invite_token=invite_token, 
-                chat_id=member.chat.id, owner_id=owner.user_id
-            )
-            session.add(current_group)
-            owner.groups.append(current_group)
-        else:
-            invite_token = current_group.invite_token
-
-        await session.commit()
+    invite_link = await get_start_link(group.invite_token)
+    await session.commit()
     
-    invite_link = await get_start_link(invite_token)
     await member.bot.send_message(chat_id=member.chat.id, parse_mode="html",
         text="Данный бот рассылает уведомления о начале лекции.\n\n"
             "Перейдите по пригласительной ссылке, чтобы получать уведомления о начале лекций:\n"

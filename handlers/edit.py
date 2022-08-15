@@ -1,26 +1,19 @@
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 
-# from keyboards.inline import edit_menu_inline_keyboard
 from keyboards import generators
 from keyboards.handle_switchable import get_selected_buttons
 from keyboards.inline.manage import manage_own_group_kb
 
-from loader import scheduler
-
-from db.models import Lecture, User, Group
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
-from sqlalchemy.exc import IntegrityError, NoResultFound
-
 from states import LectureStates
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from db.requests import get_user, get_group, get_lectures_by_group_id
+from db.requests import delete_lectures
 
-async def show_groups_reply(message: types.Message):
-    db_session = message.bot.get("db")
 
-    async with db_session() as session:
-        user = await session.get(User, message.from_user.id)
+async def show_groups_reply(message: types.Message, session: AsyncSession):
+    user = await get_user(session, message.from_user.id)
 
     answer_message = "Выберите группу"
 
@@ -37,43 +30,43 @@ async def show_groups_reply(message: types.Message):
     await message.answer(answer_message, reply_markup=groups_kb)
 
 
-async def manage_own_group(callback_query: types.CallbackQuery, state: FSMContext):
-    db_session = callback_query.bot.get("db")
+async def manage_own_group(
+    call: types.CallbackQuery, session: AsyncSession, 
+    state: FSMContext
+):
 
-    async with db_session() as session:
-        selected_group = await session.get(Group, int(callback_query.data))
+    selected_group = await get_group(session, int(call.data))
 
     await state.update_data({
-        "selected_group_id": int(callback_query.data), 
+        "selected_group_id": int(call.data), 
         "selected_group_name": selected_group.name
     })
 
-    await callback_query.answer("Вы выбрали группу")
-    await callback_query.message.edit_text(
+    await call.answer("Вы выбрали группу")
+    await call.message.edit_text(
         f"Опции для группы {selected_group.name}", 
         reply_markup=manage_own_group_kb
     )
 
 
-async def leave_group(callback_query: types.CallbackQuery, state: FSMContext):
+async def leave_group(call: types.CallbackQuery, state: FSMContext):
     ...
 
 
-async def show_lectures(callback_query: types.CallbackQuery, state: FSMContext):
+async def show_lectures(
+    call: types.CallbackQuery, session: AsyncSession, 
+    state: FSMContext
+):
+
     await LectureStates.lecture_edit.set()
 
     state_data = await state.get_data()
     group_id = state_data["selected_group_id"]
 
-    db_session = callback_query.bot.get("db")
-
-    async with db_session() as session:
-        stmt = select(Lecture).where(Lecture.group_id == group_id)
-        result = await session.execute(stmt)
-        lectures = result.scalars().all()
+    lectures = await get_lectures_by_group_id(session, group_id)
 
     if not lectures:
-        await callback_query.message.answer(
+        await call.message.answer(
             text="Вы ещё не создали ни одной лекции или удалили их."
         )
         return
@@ -82,43 +75,36 @@ async def show_lectures(callback_query: types.CallbackQuery, state: FSMContext):
         lectures, row_width=3, done_button_text="Удалить"
     )
 
-    await callback_query.message.answer(
+    await call.message.answer(
         text="Выберите лекции, которые нужно удалить",
         reply_markup=switchable_lectures_kb
     )
 
 
-async def delete_lecture(callback_query: types.CallbackQuery, state: FSMContext):
-    if callback_query.data == "done":
+async def get_lectures_to_delete(
+    call: types.CallbackQuery, session: AsyncSession, 
+    state: FSMContext
+):
+
+    if call.data == "done":
         await LectureStates.normal.set()
 
         selected_lectures = get_selected_buttons(
-            callback_query.message.reply_markup
+            call.message.reply_markup
         )
+
+        await delete_lectures(session, list(selected_lectures.keys()))
         # TODO: check if user is group owner
-
-        db_session = callback_query.bot.get("db")
-
-        async with db_session() as session:
-            for lecture_id in selected_lectures.keys():
-                lecture = await session.get(Lecture, lecture_id)
-
-                # TODO: CASCADE CronJob instead of manual deleting
-                for cronjob in lecture.cronjob:
-                    if scheduler.get_job(cronjob.job_id):
-                        scheduler.remove_job(cronjob.job_id)
-                    await session.delete(cronjob)
-                await session.delete(lecture)
             
-            await session.commit()
+        await session.commit()
 
-        await callback_query.answer(text="Лекции удалены")
-        await callback_query.message.edit_text(text=f"Лекции {', '.join(selected_lectures.values())} удалены.")
+        await call.answer(text="Лекции удалены")
+        await call.message.edit_text(text=f"Лекции {', '.join(selected_lectures.values())} удалены.")
         
         return
     
     switchable_lectures_kb = generators.update_switchable_kb(
-        callback_query.message.reply_markup,
-        callback_query.data
+        call.message.reply_markup,
+        call.data
     )
-    await callback_query.message.edit_reply_markup(reply_markup=switchable_lectures_kb)
+    await call.message.edit_reply_markup(reply_markup=switchable_lectures_kb)

@@ -1,5 +1,4 @@
 from aiogram import Dispatcher
-from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import ChatTypeFilter, Text
 
 from .start import start_command, create_group
@@ -9,7 +8,7 @@ from .create import *
 from states import LectureStates
 
 
-def setup(dp: Dispatcher):
+def register_handlers(dp: Dispatcher):
     # Reply and member updated handlers
     dp.register_message_handler(
         start_command, ChatTypeFilter("private"), 
@@ -31,7 +30,7 @@ def setup(dp: Dispatcher):
     )
 
     dp.register_callback_query_handler(
-        add_lecture, Text("add_lecture"), state=LectureStates.manage_own_group
+        get_lecture_name, Text("add_lecture"), state=LectureStates.manage_own_group
     )
 
     dp.register_callback_query_handler(
@@ -39,7 +38,7 @@ def setup(dp: Dispatcher):
     )
 
     dp.register_callback_query_handler(
-        delete_lecture, state=LectureStates.lecture_edit
+        get_lectures_to_delete, state=LectureStates.lecture_edit
     )
 
     dp.register_message_handler(set_lecture_name, state=LectureStates.waiting_for_name)
