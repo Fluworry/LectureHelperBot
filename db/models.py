@@ -34,7 +34,7 @@ class Group(Base):
     name = Column(String(255))
     
     invite_token = Column(String(15), unique=True)
-    chat_id = Column(BigInteger, unique=True, nullable=True)
+    chat_id = Column(BigInteger, unique=True)
 
     owner_id = Column(BigInteger, ForeignKey("user.user_id"))
     owner = relationship("User", back_populates="owned_groups")
