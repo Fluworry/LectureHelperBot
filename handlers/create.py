@@ -82,8 +82,7 @@ async def set_lecture_start_time(
 
     await add_lecture(
         session, lecture_name, lecture_description, 
-        group_id, lecture_weekdays.keys(), lecture_start_time, 
-        message.chat.id
+        group_id, lecture_weekdays.keys(), lecture_start_time
     )
 
     await session.commit()

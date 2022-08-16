@@ -66,8 +66,7 @@ async def get_weekdays(session: AsyncSession) -> list[WeekDay]:
 
 async def add_lecture(
     session: AsyncSession, name: str, description: str,
-    group_id: int, weekdays: list[int], start_time: list[str], 
-    chat_id: int
+    group_id: int, weekdays: list[int], start_time: list[str]
 ):
 
     lecture = Lecture(
@@ -75,6 +74,7 @@ async def add_lecture(
         description=description,
         group_id=group_id
     )
+    group = await get_group(session, group_id)
 
     for i, weekday_id in enumerate(weekdays):
         weekday = await session.get(WeekDay, weekday_id)
@@ -82,11 +82,10 @@ async def add_lecture(
 
         hour, minute = start_time[i].split(':')
 
-        # TODO: add job for all group members
         scheduler_job = scheduler.add_job(
             lecture_notify, "cron",
             day_of_week=weekday.cron_name, hour=hour, minute=minute,
-            args=[name, description, chat_id]
+            args=[name, description, group.users]
         )
         cronjob = CronJob(job_id=scheduler_job.id)
         lecture.cronjob.append(cronjob)
