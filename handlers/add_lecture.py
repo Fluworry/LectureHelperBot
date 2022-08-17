@@ -13,7 +13,9 @@ from db.requests import get_weekdays, add_lecture
 
 async def get_lecture_name(call: types.CallbackQuery):
     await LectureStates.waiting_for_name.set()
-    await call.message.edit_text(text="Отправьте название лекции в ответ на это сообщение")
+    await call.message.edit_text(
+        text="Отправьте название лекции в ответ на это сообщение"
+    )
 
 
 async def set_lecture_name(message: types.Message, state: FSMContext):
@@ -29,18 +31,19 @@ async def set_lecture_description(
     message: types.Message, session: AsyncSession,
     state: FSMContext
 ):
-
     await LectureStates.waiting_for_day.set()
     await state.update_data({"lecture_description": message.text})
 
     weekdays = await get_weekdays(session)        
     weekdays_kb = generators.get_switchable_kb(weekdays)
     
-    await message.reply(reply_markup=weekdays_kb,
-                        text="Выберите день/дни проведения лекции.\n\n")
+    await message.reply(
+        reply_markup=weekdays_kb, 
+        text="Выберите день/дни проведения лекции.\n\n"
+    )
 
 
-async def set_lecture_day(call: types.CallbackQuery, state: FSMContext):
+async def select_lecture_weekdays(call: types.CallbackQuery, state: FSMContext):
     if call.data == "done":
         await LectureStates.waiting_for_time.set()
         
@@ -61,8 +64,7 @@ async def set_lecture_day(call: types.CallbackQuery, state: FSMContext):
         return
 
     switchable_weekdays_kb = generators.update_switchable_kb(
-        call.message.reply_markup,
-        call.data
+        call.message.reply_markup, call.data
     )
     await call.message.edit_reply_markup(reply_markup=switchable_weekdays_kb)
 
@@ -71,7 +73,7 @@ async def set_lecture_start_time(
     message: types.Message, session: AsyncSession, 
     state: FSMContext
 ):
-
+    await LectureStates.normal.set()
     state_data = await state.get_data()
 
     group_id = state_data["selected_group_id"]
@@ -84,8 +86,6 @@ async def set_lecture_start_time(
         session, lecture_name, lecture_description, 
         group_id, lecture_weekdays.keys(), lecture_start_time
     )
-
     await session.commit()
 
     await message.reply(text="Готово")
-    await LectureStates.normal.set()
