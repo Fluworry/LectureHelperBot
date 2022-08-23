@@ -17,8 +17,12 @@ async def start_command(message: types.Message, session: AsyncSession):
 
     await session.commit()
 
-    await message.answer(parse_mode='markdown', reply_markup=default_kb, 
-        text="Данный бот рассылает уведомления о начале лекций всем участникам группы.\n"
-            "Пригласите бота в чат, чтобы создать собственную группу."
-            "Если вы хотите вступить в группу, перейдите по пригласительной ссылке.\n\n"
-            f"{markdown.link('Исходный код', SOURCE_CODE_LINK)}")
+    await message.answer(
+        parse_mode='markdown', reply_markup=default_kb,
+        text="Данный бот рассылает уведомления о начале лекций "
+        "всем участникам группы.\n"
+        "Пригласите бота в чат, чтобы создать собственную группу."
+        "Если вы хотите вступить в группу, "
+        "перейдите по пригласительной ссылке.\n\n"
+        f"{markdown.link('Исходный код', SOURCE_CODE_LINK)}"
+    )

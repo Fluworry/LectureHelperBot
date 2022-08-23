@@ -17,19 +17,22 @@ async def create_group(member: types.ChatMemberUpdated, session: AsyncSession):
         return
 
     group = await add_group(
-        session, member.chat.title, 
+        session, member.chat.title,
         member.from_user.id, member.chat.id
     )
-    
+
     invite_link = await get_start_link(group.invite_token)
     await session.commit()
-    
-    await member.bot.send_message(chat_id=member.chat.id, parse_mode="html",
+
+    await member.bot.send_message(
+        chat_id=member.chat.id, parse_mode="html",
         text="Данный бот рассылает уведомления о начале лекции.\n\n"
-            "Перейдите по пригласительной ссылке, чтобы получать уведомления о начале лекций:\n"
-            f"{invite_link}\n\n"
-            "Если вы пригласили бота в этот чат, вы можете добавить новые лекции в меню бота.\n\n"
-            f"<a href='{SOURCE_CODE_LINK}'>Исходный код</a>")
+        "Перейдите по пригласительной ссылке, "
+        f"чтобы получать уведомления о начале лекций:\n{invite_link}\n\n"
+        "Если вы пригласили бота в этот чат, "
+        "вы можете добавить новые лекции в меню бота.\n\n"
+        f"<a href='{SOURCE_CODE_LINK}'>Исходный код</a>"
+    )
 
 
 async def select_group(message: types.Message, session: AsyncSession):
@@ -46,25 +49,25 @@ async def select_group(message: types.Message, session: AsyncSession):
         await LectureStates.leave_group.set()
         groups_kb = generators.get_groups_kb(user.groups)
         answer_message = "Нажмите на группу, чтобы выйти из неё"
-    
+
     await message.answer(answer_message, reply_markup=groups_kb)
 
 
 async def show_group_settings(
-    call: types.CallbackQuery, session: AsyncSession, 
+    call: types.CallbackQuery, session: AsyncSession,
     state: FSMContext
 ):
 
     selected_group = await get_group(session, int(call.data))
 
     await state.update_data({
-        "selected_group_id": int(call.data), 
+        "selected_group_id": int(call.data),
         "selected_group_name": selected_group.name
     })
 
     await call.answer("Вы выбрали группу")
     await call.message.edit_text(
-        f"Опции для группы {selected_group.name}", 
+        f"Опции для группы {selected_group.name}",
         reply_markup=manage_own_group_kb
     )
 

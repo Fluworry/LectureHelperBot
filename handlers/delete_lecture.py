@@ -11,7 +11,7 @@ from db.requests import delete_lectures, get_lectures_by_group_id
 
 
 async def select_lecture(
-    call: types.CallbackQuery, session: AsyncSession, 
+    call: types.CallbackQuery, session: AsyncSession,
     state: FSMContext
 ):
     await LectureStates.lecture_edit.set()
@@ -37,7 +37,7 @@ async def select_lecture(
 
 
 async def delete_selected_lectures(
-    call: types.CallbackQuery, session: AsyncSession, 
+    call: types.CallbackQuery, session: AsyncSession,
     state: FSMContext
 ):
     if call.data == "done":
@@ -49,16 +49,16 @@ async def delete_selected_lectures(
 
         await delete_lectures(session, list(selected_lectures.keys()))
         # TODO: check if user is group owner
-            
+
         await session.commit()
 
         await call.answer(text="Лекции удалены")
         await call.message.edit_text(
             text=f"Лекции {', '.join(selected_lectures.values())} удалены."
         )
-        
+
         return
-    
+
     switchable_lectures_kb = generators.update_switchable_kb(
         call.message.reply_markup, call.data
     )

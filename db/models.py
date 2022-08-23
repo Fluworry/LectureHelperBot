@@ -3,8 +3,6 @@ from sqlalchemy.orm import declarative_base, relationship
 
 from loader import DB_USER, DB_PASS, DB_HOST, DB_NAME
 
-import keyboards.inline
-
 
 Base = declarative_base()
 
@@ -24,7 +22,9 @@ class User(Base):
         "Group", secondary=user_group_table, cascade="all, delete",
         lazy="selectin", back_populates="users"
     )
-    owned_groups = relationship("Group", lazy="selectin", back_populates="owner")
+    owned_groups = relationship(
+        "Group", lazy="selectin", back_populates="owner"
+    )
 
 
 class Group(Base):
@@ -32,7 +32,7 @@ class Group(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(255))
-    
+
     invite_token = Column(String(15), unique=True)
     chat_id = Column(BigInteger, unique=True)
 
@@ -41,7 +41,7 @@ class Group(Base):
 
     lecture = relationship("Lecture", lazy="selectin")
     users = relationship(
-        "User", secondary=user_group_table, lazy="selectin", 
+        "User", secondary=user_group_table, lazy="selectin",
         back_populates="groups"
     )
 
@@ -83,17 +83,19 @@ class CronJob(Base):
 
 class Lecture(Base):
     __tablename__ = "lecture"
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String(50), unique=True)
     description = Column(String(50), nullable=True)
 
     group_id = Column(Integer, ForeignKey("group.id"))
     weekday = relationship(
-        "WeekDay", secondary=lecture_weekday_table, lazy="selectin", 
+        "WeekDay", secondary=lecture_weekday_table, lazy="selectin",
         back_populates="lectures"
     )
-    cronjob = relationship("CronJob", secondary=lecture_cronjob_table, lazy="selectin")
+    cronjob = relationship(
+        "CronJob", secondary=lecture_cronjob_table, lazy="selectin"
+    )
 
 
 def db_init():
@@ -101,7 +103,7 @@ def db_init():
     from sqlalchemy.orm import sessionmaker
 
     engine = create_engine(
-        f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}", 
+        f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}",
         future=True, echo=True
     )
     Base.metadata.create_all(engine)
@@ -116,17 +118,16 @@ def db_init():
 
     for cron_name, name in days.items():
         session.add(WeekDay(cron_name=cron_name, name=name))
-    
+
     session.commit()
     session.close()
 
 
 def db_drop():
     from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
 
     engine = create_engine(
-        f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}", 
+        f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}",
         future=True, echo=True
     )
     Base.metadata.drop_all(engine)

@@ -4,4 +4,3 @@ config = {
         'url': 'sqlite:///cron_jobs.db'
     }
 }
-

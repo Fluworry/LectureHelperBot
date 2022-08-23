@@ -34,19 +34,21 @@ async def set_lecture_description(
     await LectureStates.waiting_for_day.set()
     await state.update_data({"lecture_description": message.text})
 
-    weekdays = await get_weekdays(session)        
+    weekdays = await get_weekdays(session)
     weekdays_kb = generators.get_switchable_kb(weekdays)
-    
+
     await message.reply(
-        reply_markup=weekdays_kb, 
+        reply_markup=weekdays_kb,
         text="Выберите день/дни проведения лекции.\n\n"
     )
 
 
-async def select_lecture_weekdays(call: types.CallbackQuery, state: FSMContext):
+async def select_lecture_weekdays(
+    call: types.CallbackQuery, state: FSMContext
+):
     if call.data == "done":
         await LectureStates.waiting_for_time.set()
-        
+
         selected_weekdays = get_selected_buttons(
             call.message.reply_markup
         )
@@ -56,10 +58,10 @@ async def select_lecture_weekdays(call: types.CallbackQuery, state: FSMContext):
         await call.message.edit_text(
             parse_mode='html',
             text=f"Выбранные дни: {', '.join(selected_weekdays.values())}\n\n"
-                "Отправьте время для каждого дня в таком порядке, как "
-                "перечислено выше, через запятую.\n\n"
-                "Например вы можете указать <b>8:30, 13:00, 7:05</b> "
-                "для понедельника, четверга и воскресенья соответственно.\n\n"
+            "Отправьте время для каждого дня в таком порядке, как "
+            "перечислено выше, через запятую.\n\n"
+            "Например вы можете указать <b>8:30, 13:00, 7:05</b> "
+            "для понедельника, четверга и воскресенья соответственно.\n\n"
         )
         return
 
@@ -70,7 +72,7 @@ async def select_lecture_weekdays(call: types.CallbackQuery, state: FSMContext):
 
 
 async def set_lecture_start_time(
-    message: types.Message, session: AsyncSession, 
+    message: types.Message, session: AsyncSession,
     state: FSMContext
 ):
     await LectureStates.normal.set()
@@ -83,7 +85,7 @@ async def set_lecture_start_time(
     lecture_start_time = message.text.replace(' ', '').split(',')
 
     await add_lecture(
-        session, lecture_name, lecture_description, 
+        session, lecture_name, lecture_description,
         group_id, lecture_weekdays.keys(), lecture_start_time
     )
     await session.commit()

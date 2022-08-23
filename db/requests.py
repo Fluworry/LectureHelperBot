@@ -18,7 +18,9 @@ async def get_user(session: AsyncSession, user_id: int) -> User:
     return await session.get(User, user_id)
 
 
-async def add_user_to_group(session: AsyncSession, user: User, invite_token: str):
+async def add_user_to_group(
+    session: AsyncSession, user: User, invite_token: str
+):
     stmt = select(Group).where(
         Group.invite_token == invite_token
     ).options(selectinload(Group.users))
@@ -31,7 +33,7 @@ async def add_user_to_group(session: AsyncSession, user: User, invite_token: str
 
 
 async def add_group(
-    session: AsyncSession, name: str, 
+    session: AsyncSession, name: str,
     user_id: int, chat_id: int
 ) -> Group:
 
@@ -44,12 +46,12 @@ async def add_group(
         owner = await add_user(session, user_id)
 
         group = Group(
-            name=name, invite_token=invite_token, 
+            name=name, invite_token=invite_token,
             chat_id=chat_id, owner_id=owner.user_id
         )
         session.add(group)
         owner.groups.append(group)
-    
+
     return group
 
 
@@ -68,9 +70,8 @@ async def add_lecture(
     session: AsyncSession, name: str, description: str,
     group_id: int, weekdays: list[int], start_time: list[str]
 ):
-
     lecture = Lecture(
-        name=name, 
+        name=name,
         description=description,
         group_id=group_id
     )
@@ -106,7 +107,7 @@ async def delete_lectures(session: AsyncSession, lectures: list[int]):
 
 
 async def get_lectures_by_group_id(
-    session: AsyncSession, 
+    session: AsyncSession,
     group_id: int
 ) -> list[Lecture]:
 
