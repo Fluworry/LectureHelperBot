@@ -3,7 +3,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import User, Group, WeekDay, CronJob, Lecture
-from cron.cron_functions import lecture_notify
+from services.scheduler import notify_users
 
 from loader import scheduler
 from uuid import uuid4
@@ -84,9 +84,9 @@ async def add_lecture(
         hour, minute = start_time[i].split(':')
 
         scheduler_job = scheduler.add_job(
-            lecture_notify, "cron",
+            notify_users, "cron",
             day_of_week=weekday.cron_name, hour=hour, minute=minute,
-            args=[name, description, group.users]
+            args=[name, description, group.users_ids]
         )
         cronjob = CronJob(job_id=scheduler_job.id)
         lecture.cronjob.append(cronjob)

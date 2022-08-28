@@ -1,7 +1,18 @@
 from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, Table
 from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.ext.associationproxy import association_proxy
 
-from loader import DB_USER, DB_PASS, DB_HOST, DB_NAME
+from dotenv import load_dotenv
+import os
+
+# TODO: don't use env variables here,
+# move db_init and db_drop to different place
+load_dotenv()
+
+DB_HOST = os.getenv("DB_HOST")
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASS = os.getenv("DB_PASS")
 
 
 Base = declarative_base()
@@ -44,6 +55,7 @@ class Group(Base):
         "User", secondary=user_group_table, lazy="selectin",
         back_populates="groups"
     )
+    users_ids = association_proxy("users", "user_id")
 
 
 lecture_cronjob_table = Table(
@@ -107,6 +119,7 @@ def db_init():
         future=True, echo=True
     )
     Base.metadata.create_all(engine)
+
     Session = sessionmaker(bind=engine)
     session = Session()
 
