@@ -4,7 +4,6 @@ from aiogram.dispatcher import FSMContext
 from keyboards import generators
 from keyboards.handle_switchable import get_selected_buttons
 
-from cron.cron_functions import *
 from states import LectureStates
 
 from sqlalchemy.ext.asyncio import AsyncSession
