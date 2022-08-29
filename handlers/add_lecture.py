@@ -2,7 +2,7 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 
 from keyboards import generators
-from keyboards.handle_switchable import get_selected_buttons
+from keyboards.switchable import get_selected_buttons, update_switchable_kb
 
 from states import LectureStates
 
@@ -64,7 +64,7 @@ async def select_lecture_weekdays(
         )
         return
 
-    switchable_weekdays_kb = generators.update_switchable_kb(
+    switchable_weekdays_kb = update_switchable_kb(
         call.message.reply_markup, call.data
     )
     await call.message.edit_reply_markup(reply_markup=switchable_weekdays_kb)

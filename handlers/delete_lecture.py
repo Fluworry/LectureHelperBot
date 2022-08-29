@@ -2,7 +2,7 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 
 from keyboards import generators
-from keyboards.handle_switchable import get_selected_buttons
+from keyboards.switchable import get_selected_buttons, update_switchable_kb
 
 from states import LectureStates
 
@@ -59,7 +59,7 @@ async def delete_selected_lectures(
 
         return
 
-    switchable_lectures_kb = generators.update_switchable_kb(
+    switchable_lectures_kb = update_switchable_kb(
         call.message.reply_markup, call.data
     )
     await call.message.edit_reply_markup(reply_markup=switchable_lectures_kb)
