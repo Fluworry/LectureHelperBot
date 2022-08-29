@@ -2,12 +2,10 @@ from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, Table
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.associationproxy import association_proxy
 
-from dotenv import load_dotenv
 import os
 
 # TODO: don't use env variables here,
 # move db_init and db_drop to different place
-load_dotenv()
 
 DB_HOST = os.getenv("DB_HOST")
 DB_NAME = os.getenv("DB_NAME")

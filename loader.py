@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from middlewares.db import DbSessionMiddleware
 
-from dotenv import load_dotenv
 import os
 import logging
 
@@ -13,8 +12,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
 logging.basicConfig(level=logging.INFO)
-
-load_dotenv()
 
 API_TOKEN = os.getenv("API_TOKEN")
 
