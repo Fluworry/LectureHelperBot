@@ -2,16 +2,6 @@ from sqlalchemy import Column, String, Integer, BigInteger, ForeignKey, Table
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.ext.associationproxy import association_proxy
 
-import os
-
-# TODO: don't use env variables here,
-# move db_init and db_drop to different place
-
-DB_HOST = os.getenv("DB_HOST")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASS = os.getenv("DB_PASS")
-
 
 Base = declarative_base()
 
@@ -106,39 +96,3 @@ class Lecture(Base):
     cronjobs = relationship(
         "CronJob", secondary=lecture_cronjob_table, lazy="selectin"
     )
-
-
-def db_init():
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-
-    engine = create_engine(
-        f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}",
-        future=True, echo=True
-    )
-    Base.metadata.create_all(engine)
-
-    Session = sessionmaker(bind=engine)
-    session = Session()
-
-    days = {
-        'mon': "Пн", 'tue': "Вт", 'wed': "Ср",
-        'thu': "Чт", 'fri': "Пт", 'sat': "Сб",
-        'sun': "Вс"
-    }
-
-    for cron_name, name in days.items():
-        session.add(WeekDay(cron_name=cron_name, name=name))
-
-    session.commit()
-    session.close()
-
-
-def db_drop():
-    from sqlalchemy import create_engine
-
-    engine = create_engine(
-        f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}",
-        future=True, echo=True
-    )
-    Base.metadata.drop_all(engine)
