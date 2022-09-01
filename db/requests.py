@@ -82,7 +82,6 @@ async def add_lecture(
         lecture.weekdays.append(weekday)
 
         hour, minute = start_time[i].split(':')
-
         scheduler_job = scheduler.add_job(
             notify_users, "cron",
             day_of_week=weekday.cron_name, hour=hour, minute=minute,
@@ -98,11 +97,10 @@ async def delete_lectures(session: AsyncSession, lectures: list[int]):
     for lecture_id in lectures:
         lecture = await session.get(Lecture, lecture_id)
 
-        # TODO: CASCADE CronJob instead of manual deleting
         for cronjob in lecture.cronjobs:
             if scheduler.get_job(cronjob.job_id):
                 scheduler.remove_job(cronjob.job_id)
-            await session.delete(cronjob)
+
         await session.delete(lecture)
 
 

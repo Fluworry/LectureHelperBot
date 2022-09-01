@@ -69,8 +69,8 @@ class WeekDay(Base):
     name = Column(String(30))
 
     lectures = relationship(
-        "Lecture", secondary=lecture_weekday_table, cascade="all, delete",
-        back_populates="weekdays"
+        "Lecture", secondary=lecture_weekday_table,
+        cascade="all, delete", back_populates="weekdays"
     )
 
 
@@ -90,9 +90,10 @@ class Lecture(Base):
 
     group_id = Column(Integer, ForeignKey("groups.id"))
     weekdays = relationship(
-        "WeekDay", secondary=lecture_weekday_table, lazy="selectin",
-        back_populates="lectures"
+        "WeekDay", secondary=lecture_weekday_table,
+        lazy="selectin", back_populates="lectures"
     )
     cronjobs = relationship(
-        "CronJob", secondary=lecture_cronjob_table, lazy="selectin"
+        "CronJob", secondary=lecture_cronjob_table,
+        cascade="all, delete", lazy="selectin"
     )
