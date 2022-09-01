@@ -48,6 +48,11 @@ def register_handlers(dp: Dispatcher):
         state=LectureStates.manage_own_group
     )
 
+    dp.register_callback_query_handler(
+        manage_group.leave_group,
+        state=LectureStates.leave_group
+    )
+
     dp.register_message_handler(
         add_lecture.set_lecture_name,
         state=LectureStates.waiting_for_name

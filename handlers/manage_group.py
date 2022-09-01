@@ -9,7 +9,7 @@ from loader import SOURCE_CODE_LINK
 from states import LectureStates
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from db.requests import get_user, get_group, add_group
+from db.requests import get_user, get_group, add_group, delete_user_group
 
 
 async def create_group(member: types.ChatMemberUpdated, session: AsyncSession):
@@ -72,5 +72,13 @@ async def show_group_settings(
     )
 
 
-async def leave_group(call: types.CallbackQuery, state: FSMContext):
-    ...
+async def leave_group(
+    call: types.CallbackQuery, session: AsyncSession,
+    state: FSMContext
+):
+    await LectureStates.normal.set()
+
+    await delete_user_group(session, call.from_user.id, int(call.data))
+    await session.commit()
+
+    await call.message.edit_text("Вы вышли из группы")

@@ -59,6 +59,15 @@ async def get_group(session: AsyncSession, group_id: int) -> Group:
     return await session.get(Group, group_id)
 
 
+async def delete_user_group(
+    session: AsyncSession, user_id: int, group_id: int
+):
+    user = await get_user(session, user_id)
+    group = await get_group(session, group_id)
+
+    user.groups.remove(group)
+
+
 async def get_weekdays(session: AsyncSession) -> list[WeekDay]:
     stmt = select(WeekDay)
     result = await session.execute(stmt)
