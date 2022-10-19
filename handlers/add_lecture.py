@@ -1,4 +1,5 @@
-from aiogram import types
+from aiogram import types, Dispatcher
+from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher import FSMContext
 
 from keyboards import generators
@@ -7,7 +8,9 @@ from keyboards.switchable import get_selected_buttons, update_switchable_kb
 from states import LectureStates
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from db.requests import get_weekdays, add_lecture
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from services.repositories import Repos, WeekdayRepo, LectureRepo
 
 
 async def get_lecture_name(call: types.CallbackQuery):
@@ -27,13 +30,12 @@ async def set_lecture_name(message: types.Message, state: FSMContext):
 
 
 async def set_lecture_description(
-    message: types.Message, session: AsyncSession,
-    state: FSMContext
+    message: types.Message, repo: Repos, state: FSMContext
 ):
     await LectureStates.waiting_for_day.set()
     await state.update_data({"lecture_description": message.text})
 
-    weekdays = await get_weekdays(session)
+    weekdays = await repo.get_repo(WeekdayRepo).get_all()
     weekdays_kb = generators.get_switchable_kb(weekdays)
 
     await message.reply(
@@ -71,8 +73,8 @@ async def select_lecture_weekdays(
 
 
 async def set_lecture_start_time(
-    message: types.Message, session: AsyncSession,
-    state: FSMContext
+    message: types.Message, session: AsyncSession, repo: Repos,
+    scheduler: AsyncIOScheduler, state: FSMContext
 ):
     await LectureStates.normal.set()
     state_data = await state.get_data()
@@ -83,10 +85,37 @@ async def set_lecture_start_time(
     lecture_weekdays = state_data["lecture_weekdays"]
     lecture_start_time = message.text.replace(' ', '').split(',')
 
-    await add_lecture(
-        session, lecture_name, lecture_description,
+    await repo.get_repo(LectureRepo, scheduler).add(
+        lecture_name, lecture_description,
         group_id, lecture_weekdays.keys(), lecture_start_time
     )
     await session.commit()
 
     await message.reply(text="Готово")
+
+
+def register_handlers(dp: Dispatcher):
+    dp.register_callback_query_handler(
+        get_lecture_name, Text("add_lecture"),
+        state=LectureStates.manage_own_group
+    )
+
+    dp.register_message_handler(
+        set_lecture_name,
+        state=LectureStates.waiting_for_name
+    )
+
+    dp.register_message_handler(
+        set_lecture_description,
+        state=LectureStates.waiting_for_description
+    )
+
+    dp.register_callback_query_handler(
+        select_lecture_weekdays,
+        state=LectureStates.waiting_for_day
+    )
+
+    dp.register_message_handler(
+        set_lecture_start_time,
+        state=LectureStates.waiting_for_time
+    )

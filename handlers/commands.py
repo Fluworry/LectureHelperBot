@@ -1,19 +1,26 @@
-from aiogram import types
+import os
+
+from aiogram import types, Dispatcher
+from aiogram.dispatcher.filters import ChatTypeFilter
 from aiogram.utils import markdown
 
 from keyboards.reply.default import default_kb
-from loader import SOURCE_CODE_LINK
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from db.requests import add_user, add_user_to_group
+from services.repositories import Repos, UserRepo, GroupRepo
 
 
-async def start_command(message: types.Message, session: AsyncSession):
+SOURCE_CODE_LINK = os.getenv("SOURCE_CODE_LINK")
+
+
+async def start_command(
+    message: types.Message, session: AsyncSession, repo: Repos
+):
     invite_token = message.get_args()
-    user = await add_user(session, message.from_user.id)
+    user = await repo.get_repo(UserRepo).add(message.from_user.id)
 
     if invite_token:
-        await add_user_to_group(session, user, invite_token)
+        await repo.get_repo(GroupRepo).add_user(user, invite_token)
 
     await session.commit()
 
@@ -25,4 +32,11 @@ async def start_command(message: types.Message, session: AsyncSession):
         "Если вы хотите вступить в группу, "
         "перейдите по пригласительной ссылке.\n\n"
         f"{markdown.link('Исходный код', SOURCE_CODE_LINK)}"
+    )
+
+
+def register_handlers(dp: Dispatcher):
+    dp.register_message_handler(
+        start_command, ChatTypeFilter("private"),
+        state='*', commands=['start']
     )

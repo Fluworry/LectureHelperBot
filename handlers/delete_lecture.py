@@ -1,4 +1,5 @@
-from aiogram import types
+from aiogram import types, Dispatcher
+from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher import FSMContext
 
 from keyboards import generators
@@ -6,19 +7,22 @@ from keyboards.switchable import get_selected_buttons, update_switchable_kb
 
 from states import LectureStates
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy.ext.asyncio import AsyncSession
-from db.requests import delete_lectures, get_lectures_by_group_id
+from services.repositories import Repos, LectureRepo
 
 
 async def select_lecture(
-    call: types.CallbackQuery, session: AsyncSession,
-    state: FSMContext
+    call: types.CallbackQuery, session: AsyncSession, repo: Repos,
+    scheduler: AsyncIOScheduler, state: FSMContext
 ):
     await LectureStates.lecture_edit.set()
 
     state_data = await state.get_data()
     group_id = state_data["selected_group_id"]
-    lectures = await get_lectures_by_group_id(session, group_id)
+    lectures = await repo.get_repo(
+        LectureRepo, scheduler
+    ).get_by_group_id(group_id)
 
     if not lectures:
         await call.message.answer(
@@ -37,8 +41,8 @@ async def select_lecture(
 
 
 async def delete_selected_lectures(
-    call: types.CallbackQuery, session: AsyncSession,
-    state: FSMContext
+    call: types.CallbackQuery, session: AsyncSession, repo: Repos,
+    scheduler: AsyncIOScheduler, state: FSMContext
 ):
     if call.data == "done":
         await LectureStates.normal.set()
@@ -47,7 +51,8 @@ async def delete_selected_lectures(
             call.message.reply_markup
         )
 
-        await delete_lectures(session, list(selected_lectures.keys()))
+        for lecture_id in selected_lectures:
+            await repo.get_repo(LectureRepo, scheduler).delete(lecture_id)
         # TODO: check if user is group owner
 
         await session.commit()
@@ -63,3 +68,15 @@ async def delete_selected_lectures(
         call.message.reply_markup, call.data
     )
     await call.message.edit_reply_markup(reply_markup=switchable_lectures_kb)
+
+
+def register_handlers(dp: Dispatcher):
+    dp.register_callback_query_handler(
+        select_lecture, Text("delete_lecture"),
+        state=LectureStates.manage_own_group
+    )
+
+    dp.register_callback_query_handler(
+        delete_selected_lectures,
+        state=LectureStates.lecture_edit
+    )
