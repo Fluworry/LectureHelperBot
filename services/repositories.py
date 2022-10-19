@@ -1,3 +1,4 @@
+from uuid import uuid4
 from typing import Type, TypeVar
 
 from sqlalchemy import select
@@ -7,9 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from db.models import User, Group, WeekDay, CronJob, Lecture
-from services.scheduler import notify_users
-
-from uuid import uuid4
+from services.notification import send_notification
 
 
 class BaseRepo:
@@ -21,8 +20,8 @@ T = TypeVar("T", bound=BaseRepo)
 
 
 class Repos(BaseRepo):
-    def get_repo(self, Repo: Type[T], **kwargs) -> T:
-        return Repo(self.session, **kwargs)
+    def get_repo(self, Repo: Type[T], *args) -> T:
+        return Repo(self.session, *args)
 
 
 class WeekdayRepo(BaseRepo):
@@ -43,7 +42,9 @@ class UserRepo(BaseRepo):
 
 
 class LectureRepo(BaseRepo):
-    def __init__(self, session: AsyncSession, scheduler: AsyncIOScheduler):
+    def __init__(
+        self, session: AsyncSession, scheduler: AsyncIOScheduler,
+    ):
         super().__init__(session)
         self.scheduler = scheduler
 
@@ -65,7 +66,7 @@ class LectureRepo(BaseRepo):
 
             hour, minute = start_time[i].split(':')
             scheduler_job = self.scheduler.add_job(
-                notify_users, "cron",
+                send_notification, "cron",
                 day_of_week=weekday.cron_name, hour=hour, minute=minute,
                 args=[name, description, group.user_ids]
             )
