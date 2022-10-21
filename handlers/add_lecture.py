@@ -2,14 +2,12 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher import FSMContext
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from keyboards import generators
 from keyboards.switchable import get_selected_buttons, update_switchable_kb
 
 from states import LectureStates
-
-from sqlalchemy.ext.asyncio import AsyncSession
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
 from services.repositories import Repos, WeekdayRepo, LectureRepo
 
 
@@ -74,7 +72,7 @@ async def select_lecture_weekdays(
 
 async def set_lecture_start_time(
     message: types.Message, session: AsyncSession, repo: Repos,
-    scheduler: AsyncIOScheduler, state: FSMContext
+    state: FSMContext
 ):
     await LectureStates.normal.set()
     state_data = await state.get_data()
@@ -85,7 +83,7 @@ async def set_lecture_start_time(
     lecture_weekdays = state_data["lecture_weekdays"]
     lecture_start_time = message.text.replace(' ', '').split(',')
 
-    await repo.get_repo(LectureRepo, scheduler).add(
+    await repo.get_repo(LectureRepo).add(
         lecture_name, lecture_description,
         group_id, lecture_weekdays.keys(), lecture_start_time
     )

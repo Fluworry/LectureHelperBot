@@ -6,12 +6,8 @@ import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from loader import bot, dp, scheduler
 from middlewares.db import DbSessionMiddleware
-from middlewares.scheduler import SchedulerMiddleware
-
-from loader import bot, dp
-
 from handlers import add_lecture, delete_lecture, manage_group, commands
 
 
@@ -24,16 +20,12 @@ async def main():
     DB_USER = os.getenv("DB_USER")
     DB_PASS = os.getenv("DB_PASS")
 
-    # SOURCE_CODE_LINK = os.getenv("SOURCE_CODE_LINK")
-    TIMEZONE = os.getenv("TIMEZONE")  # Example: Europe/Kiev
-
     engine = create_async_engine(
         f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}",
         future=True
     )
     db_pool = sessionmaker(engine, class_=AsyncSession)
 
-    scheduler = AsyncIOScheduler(timezone=TIMEZONE)
     scheduler.add_jobstore(
         'sqlalchemy',
         url=f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}"
@@ -47,7 +39,6 @@ async def main():
 
     # Register middlewares
     dp.middleware.setup(DbSessionMiddleware(db_pool))
-    dp.middleware.setup(SchedulerMiddleware(scheduler))
 
     try:
         scheduler.start()
@@ -60,5 +51,3 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
-    # handlers.register_handlers(dp)
-    # executor.start_polling(dp, skip_updates=True)

@@ -5,12 +5,12 @@ from aiogram.dispatcher.filters import Text, ChatTypeFilter
 from aiogram.dispatcher import FSMContext
 from aiogram.utils.deep_linking import get_start_link
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from keyboards import generators
 from keyboards.inline.manage import manage_own_group_kb
 
 from states import LectureStates
-
-from sqlalchemy.ext.asyncio import AsyncSession
 from services.repositories import Repos, UserRepo, GroupRepo
 
 

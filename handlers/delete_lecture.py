@@ -2,27 +2,24 @@ from aiogram import types, Dispatcher
 from aiogram.dispatcher.filters import Text
 from aiogram.dispatcher import FSMContext
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from keyboards import generators
 from keyboards.switchable import get_selected_buttons, update_switchable_kb
 
 from states import LectureStates
-
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from sqlalchemy.ext.asyncio import AsyncSession
 from services.repositories import Repos, LectureRepo
 
 
 async def select_lecture(
     call: types.CallbackQuery, session: AsyncSession, repo: Repos,
-    scheduler: AsyncIOScheduler, state: FSMContext
+    state: FSMContext
 ):
     await LectureStates.lecture_edit.set()
 
     state_data = await state.get_data()
     group_id = state_data["selected_group_id"]
-    lectures = await repo.get_repo(
-        LectureRepo, scheduler
-    ).get_by_group_id(group_id)
+    lectures = await repo.get_repo(LectureRepo).get_by_group_id(group_id)
 
     if not lectures:
         await call.message.answer(
@@ -42,7 +39,7 @@ async def select_lecture(
 
 async def delete_selected_lectures(
     call: types.CallbackQuery, session: AsyncSession, repo: Repos,
-    scheduler: AsyncIOScheduler, state: FSMContext
+    state: FSMContext
 ):
     if call.data == "done":
         await LectureStates.normal.set()
@@ -52,7 +49,7 @@ async def delete_selected_lectures(
         )
 
         for lecture_id in selected_lectures:
-            await repo.get_repo(LectureRepo, scheduler).delete(lecture_id)
+            await repo.get_repo(LectureRepo).delete(lecture_id)
         # TODO: check if user is group owner
 
         await session.commit()

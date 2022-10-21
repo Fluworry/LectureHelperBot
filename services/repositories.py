@@ -5,10 +5,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from loader import scheduler
+from services.notification import send_notification
 
 from db.models import User, Group, WeekDay, CronJob, Lecture
-from services.notification import send_notification
 
 
 class BaseRepo:
@@ -42,12 +42,6 @@ class UserRepo(BaseRepo):
 
 
 class LectureRepo(BaseRepo):
-    def __init__(
-        self, session: AsyncSession, scheduler: AsyncIOScheduler,
-    ):
-        super().__init__(session)
-        self.scheduler = scheduler
-
     async def add(
         self, name: str, description: str,
         group_id: int, weekdays: list[int], start_time: list[str]
@@ -65,7 +59,7 @@ class LectureRepo(BaseRepo):
             lecture.weekdays.append(weekday)
 
             hour, minute = start_time[i].split(':')
-            scheduler_job = self.scheduler.add_job(
+            scheduler_job = scheduler.add_job(
                 send_notification, "cron",
                 day_of_week=weekday.cron_name, hour=hour, minute=minute,
                 args=[name, description, group.user_ids]
@@ -79,8 +73,8 @@ class LectureRepo(BaseRepo):
         lecture = await self.get(lecture_id)
 
         for cronjob in lecture.cronjobs:
-            if self.scheduler.get_job(cronjob.job_id):
-                self.scheduler.remove_job(cronjob.job_id)
+            if scheduler.get_job(cronjob.job_id):
+                scheduler.remove_job(cronjob.job_id)
 
         await self.session.delete(lecture)
 
