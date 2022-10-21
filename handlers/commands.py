@@ -1,16 +1,12 @@
-import os
-
 from aiogram import types, Dispatcher
 from aiogram.dispatcher.filters import ChatTypeFilter
 from aiogram.utils import markdown
 
-from keyboards.reply.default import default_kb
-
 from sqlalchemy.ext.asyncio import AsyncSession
+from loader import SOURCE_CODE_LINK
+
+from keyboards.reply.default import default_kb
 from services.repositories import Repos, UserRepo, GroupRepo
-
-
-SOURCE_CODE_LINK = os.getenv("SOURCE_CODE_LINK")
 
 
 async def start_command(
