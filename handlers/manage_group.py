@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from keyboards import generators
 from keyboards.inline.manage import manage_own_group_kb
 
-from states import LectureStates
+from states.event import EventStates
 from services.repositories import Repos, UserRepo, GroupRepo
 
 
@@ -32,11 +32,11 @@ async def create_group(
 
     await member.bot.send_message(
         chat_id=member.chat.id, parse_mode="html",
-        text="Данный бот рассылает уведомления о начале лекции.\n\n"
+        text="Данный бот рассылает уведомления о начале события.\n\n"
         "Перейдите по пригласительной ссылке, "
-        f"чтобы получать уведомления о начале лекций:\n{invite_link}\n\n"
+        f"чтобы получать уведомления о начале событий:\n{invite_link}\n\n"
         "Если вы пригласили бота в этот чат, "
-        "вы можете добавить новые лекции в меню бота.\n\n"
+        "вы можете добавить новые события в меню бота.\n\n"
         f"<a href='{SOURCE_CODE_LINK}'>Исходный код</a>"
     )
 
@@ -49,12 +49,12 @@ async def select_group(
     answer_message = "Выберите группу"
 
     if message.text == "Управление группами":
-        await LectureStates.manage_own_group.set()
+        await EventStates.manage_own_group.set()
         groups_kb = generators.get_groups_kb(user.owned_groups)
-        answer_message = "Выберите группу, чтобы добавить/убрать лекции"
+        answer_message = "Выберите группу, чтобы добавить/убрать события"
 
     elif message.text == "Мои группы":
-        await LectureStates.leave_group.set()
+        await EventStates.leave_group.set()
         groups_kb = generators.get_groups_kb(user.groups)
         answer_message = "Нажмите на группу, чтобы выйти из неё"
 
@@ -83,7 +83,7 @@ async def leave_group(
     call: types.CallbackQuery, session: AsyncSession, repo: Repos,
     state: FSMContext
 ):
-    await LectureStates.normal.set()
+    await EventStates.normal.set()
 
     await repo.get_repo(GroupRepo).delete(call.from_user.id, int(call.data))
     await session.commit()
@@ -105,10 +105,10 @@ def register_handlers(dp: Dispatcher):
 
     dp.register_callback_query_handler(
         show_group_settings,
-        state=LectureStates.manage_own_group
+        state=EventStates.manage_own_group
     )
 
     dp.register_callback_query_handler(
         leave_group,
-        state=LectureStates.leave_group
+        state=EventStates.leave_group
     )

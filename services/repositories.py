@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from loader import scheduler
 from services.notification import send_notification
 
-from db.models import User, Group, WeekDay, CronJob, Lecture
+from db.models import User, Group, WeekDay, CronJob, Event
 
 
 class BaseRepo:
@@ -41,12 +41,12 @@ class UserRepo(BaseRepo):
         return await self.session.get(User, user_id)
 
 
-class LectureRepo(BaseRepo):
+class EventRepo(BaseRepo):
     async def add(
         self, name: str, description: str,
         group_id: int, weekdays: list[int], start_time: list[str]
     ):
-        lecture = Lecture(
+        event = Event(
             name=name,
             description=description,
             group_id=group_id
@@ -56,7 +56,7 @@ class LectureRepo(BaseRepo):
 
         for i, weekday_id in enumerate(weekdays):
             weekday = await self.session.get(WeekDay, weekday_id)
-            lecture.weekdays.append(weekday)
+            event.weekdays.append(weekday)
 
             hour, minute = start_time[i].split(':')
             scheduler_job = scheduler.add_job(
@@ -65,26 +65,26 @@ class LectureRepo(BaseRepo):
                 args=[name, description, group.user_ids]
             )
             cronjob = CronJob(job_id=scheduler_job.id)
-            lecture.cronjobs.append(cronjob)
+            event.cronjobs.append(cronjob)
 
-        self.session.add(lecture)
+        self.session.add(event)
 
-    async def delete(self, lecture_id: int):
-        lecture = await self.get(lecture_id)
+    async def delete(self, event_id: int):
+        event = await self.get(event_id)
 
-        for cronjob in lecture.cronjobs:
+        for cronjob in event.cronjobs:
             if scheduler.get_job(cronjob.job_id):
                 scheduler.remove_job(cronjob.job_id)
 
-        await self.session.delete(lecture)
+        await self.session.delete(event)
 
-    async def get_by_group_id(self, group_id: int) -> list[Lecture]:
-        stmt = select(Lecture).where(Lecture.group_id == group_id)
+    async def get_by_group_id(self, group_id: int) -> list[Event]:
+        stmt = select(Event).where(Event.group_id == group_id)
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
-    async def get(self, lecture_id: int) -> Lecture:
-        return await self.session.get(Lecture, lecture_id)
+    async def get(self, event_id: int) -> Event:
+        return await self.session.get(Event, event_id)
 
 
 class GroupRepo(BaseRepo):

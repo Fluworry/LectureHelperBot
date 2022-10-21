@@ -38,7 +38,7 @@ class Group(Base):
     owner_id = Column(BigInteger, ForeignKey("users.user_id"))
     owner = relationship("User", back_populates="owned_groups")
 
-    lectures = relationship("Lecture", lazy="selectin")
+    events = relationship("Event", lazy="selectin")
     users = relationship(
         "User", secondary=user_group_table, lazy="selectin",
         back_populates="groups"
@@ -46,17 +46,17 @@ class Group(Base):
     user_ids = association_proxy("users", "user_id")
 
 
-lecture_cronjob_table = Table(
-    "lecture_cronjob",
+event_cronjob_table = Table(
+    "event_cronjob",
     Base.metadata,
-    Column("lecture_id", ForeignKey("lectures.id"), primary_key=True),
+    Column("event_id", ForeignKey("events.id"), primary_key=True),
     Column("cronjob_id", ForeignKey("cronjobs.id"), primary_key=True)
 )
 
-lecture_weekday_table = Table(
-    "lecture_weekday",
+event_weekday_table = Table(
+    "event_weekday",
     Base.metadata,
-    Column("lecture_id", ForeignKey("lectures.id"), primary_key=True),
+    Column("event_id", ForeignKey("events.id"), primary_key=True),
     Column("weekday_id", ForeignKey("weekdays.id"), primary_key=True)
 )
 
@@ -68,8 +68,8 @@ class WeekDay(Base):
     cron_name = Column(String(30))
     name = Column(String(30))
 
-    lectures = relationship(
-        "Lecture", secondary=lecture_weekday_table,
+    events = relationship(
+        "Event", secondary=event_weekday_table,
         cascade="all, delete", back_populates="weekdays"
     )
 
@@ -81,8 +81,8 @@ class CronJob(Base):
     job_id = Column(String(255))
 
 
-class Lecture(Base):
-    __tablename__ = "lectures"
+class Event(Base):
+    __tablename__ = "events"
 
     id = Column(Integer, primary_key=True)
     name = Column(String(50), unique=True)
@@ -90,10 +90,10 @@ class Lecture(Base):
 
     group_id = Column(Integer, ForeignKey("groups.id"))
     weekdays = relationship(
-        "WeekDay", secondary=lecture_weekday_table,
-        lazy="selectin", back_populates="lectures"
+        "WeekDay", secondary=event_weekday_table,
+        lazy="selectin", back_populates="events"
     )
     cronjobs = relationship(
-        "CronJob", secondary=lecture_cronjob_table,
+        "CronJob", secondary=event_cronjob_table,
         cascade="all, delete", lazy="selectin"
     )

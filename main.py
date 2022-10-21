@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from loader import bot, dp, scheduler
 from middlewares.db import DbSessionMiddleware
-from handlers import add_lecture, delete_lecture, manage_group, commands
+from handlers import add_event, delete_event, manage_group, commands
 
 
 async def main():
@@ -32,8 +32,8 @@ async def main():
     )
 
     # Register handlers
-    add_lecture.register_handlers(dp)
-    delete_lecture.register_handlers(dp)
+    add_event.register_handlers(dp)
+    delete_event.register_handlers(dp)
     manage_group.register_handlers(dp)
     commands.register_handlers(dp)
 

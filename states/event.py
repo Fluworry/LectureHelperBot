@@ -1,7 +1,7 @@
 from aiogram.dispatcher.filters.state import State, StatesGroup
 
 
-class LectureStates(StatesGroup):
+class EventStates(StatesGroup):
     normal = State()
     waiting_for_name = State()
     waiting_for_description = State()
@@ -11,4 +11,4 @@ class LectureStates(StatesGroup):
     leave_group = State()
     manage_own_group = State()
 
-    lecture_edit = State()
+    event_edit = State()

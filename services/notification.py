@@ -7,6 +7,6 @@ async def send_notification(
     for user_id in user_ids:
         await bot.send_message(
             chat_id=user_id, parse_mode='html',
-            text=f"Уведомление о начале лекции:\n\n\n"
+            text=f"Уведомление о начале события:\n\n\n"
             f"<b>{title}</b>\n\n{description}"
         )

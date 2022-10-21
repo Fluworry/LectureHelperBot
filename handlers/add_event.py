@@ -7,52 +7,52 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from keyboards import generators
 from keyboards.switchable import get_selected_buttons, update_switchable_kb
 
-from states import LectureStates
-from services.repositories import Repos, WeekdayRepo, LectureRepo
+from states.event import EventStates
+from services.repositories import Repos, WeekdayRepo, EventRepo
 
 
-async def get_lecture_name(call: types.CallbackQuery):
-    await LectureStates.waiting_for_name.set()
+async def get_event_name(call: types.CallbackQuery):
+    await EventStates.waiting_for_name.set()
     await call.message.edit_text(
-        text="Отправьте название лекции в ответ на это сообщение"
+        text="Отправьте название события в ответ на это сообщение"
     )
 
 
-async def set_lecture_name(message: types.Message, state: FSMContext):
-    await LectureStates.waiting_for_description.set()
-    await state.update_data({"lecture_name": message.text})
+async def set_event_name(message: types.Message, state: FSMContext):
+    await EventStates.waiting_for_description.set()
+    await state.update_data({"event_name": message.text})
     await message.reply(
-        text="Отправьте описание лекции в ответ на это сообщение.\n"
+        text="Отправьте описание события в ответ на это сообщение.\n"
         "Может содержать ссылки и доп. информацию."
     )
 
 
-async def set_lecture_description(
+async def set_event_description(
     message: types.Message, repo: Repos, state: FSMContext
 ):
-    await LectureStates.waiting_for_day.set()
-    await state.update_data({"lecture_description": message.text})
+    await EventStates.waiting_for_day.set()
+    await state.update_data({"event_description": message.text})
 
     weekdays = await repo.get_repo(WeekdayRepo).get_all()
     weekdays_kb = generators.get_switchable_kb(weekdays)
 
     await message.reply(
         reply_markup=weekdays_kb,
-        text="Выберите день/дни проведения лекции.\n\n"
+        text="Выберите день/дни проведения события.\n\n"
     )
 
 
-async def select_lecture_weekdays(
+async def select_event_weekdays(
     call: types.CallbackQuery, state: FSMContext
 ):
     if call.data == "done":
-        await LectureStates.waiting_for_time.set()
+        await EventStates.waiting_for_time.set()
 
         selected_weekdays = get_selected_buttons(
             call.message.reply_markup
         )
 
-        await state.update_data({"lecture_weekdays": selected_weekdays})
+        await state.update_data({"event_weekdays": selected_weekdays})
 
         await call.message.edit_text(
             parse_mode='html',
@@ -70,22 +70,22 @@ async def select_lecture_weekdays(
     await call.message.edit_reply_markup(reply_markup=switchable_weekdays_kb)
 
 
-async def set_lecture_start_time(
+async def set_event_start_time(
     message: types.Message, session: AsyncSession, repo: Repos,
     state: FSMContext
 ):
-    await LectureStates.normal.set()
+    await EventStates.normal.set()
     state_data = await state.get_data()
 
     group_id = state_data["selected_group_id"]
-    lecture_name = state_data["lecture_name"]
-    lecture_description = state_data["lecture_description"]
-    lecture_weekdays = state_data["lecture_weekdays"]
-    lecture_start_time = message.text.replace(' ', '').split(',')
+    event_name = state_data["event_name"]
+    event_description = state_data["event_description"]
+    event_weekdays = state_data["event_weekdays"]
+    event_start_time = message.text.replace(' ', '').split(',')
 
-    await repo.get_repo(LectureRepo).add(
-        lecture_name, lecture_description,
-        group_id, lecture_weekdays.keys(), lecture_start_time
+    await repo.get_repo(EventRepo).add(
+        event_name, event_description,
+        group_id, event_weekdays.keys(), event_start_time
     )
     await session.commit()
 
@@ -94,26 +94,26 @@ async def set_lecture_start_time(
 
 def register_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(
-        get_lecture_name, Text("add_lecture"),
-        state=LectureStates.manage_own_group
+        get_event_name, Text("add_event"),
+        state=EventStates.manage_own_group
     )
 
     dp.register_message_handler(
-        set_lecture_name,
-        state=LectureStates.waiting_for_name
+        set_event_name,
+        state=EventStates.waiting_for_name
     )
 
     dp.register_message_handler(
-        set_lecture_description,
-        state=LectureStates.waiting_for_description
+        set_event_description,
+        state=EventStates.waiting_for_description
     )
 
     dp.register_callback_query_handler(
-        select_lecture_weekdays,
-        state=LectureStates.waiting_for_day
+        select_event_weekdays,
+        state=EventStates.waiting_for_day
     )
 
     dp.register_message_handler(
-        set_lecture_start_time,
-        state=LectureStates.waiting_for_time
+        set_event_start_time,
+        state=EventStates.waiting_for_time
     )
