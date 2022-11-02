@@ -16,4 +16,4 @@ This bot notifies you about upcoming events, conferences, courses or webinars.
 - APScheduler
 
 ## Installation
-```pip install -r requirements.py```
+```pip install -r requirements.txt```
