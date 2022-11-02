@@ -86,13 +86,13 @@ def upgrade() -> None:
     op.bulk_insert(
         weekdays,
         [
-            {'id': 1, 'cron_name': 'mon', 'name': 'Пн'},
-            {'id': 2, 'cron_name': 'tue', 'name': 'Вт'},
-            {'id': 3, 'cron_name': 'wed', 'name': 'Ср'},
-            {'id': 4, 'cron_name': 'thu', 'name': 'Чт'},
-            {'id': 5, 'cron_name': 'fri', 'name': 'Пт'},
-            {'id': 6, 'cron_name': 'sat', 'name': 'Сб'},
-            {'id': 7, 'cron_name': 'sun', 'name': 'Вс'}
+            {'id': 1, 'cron_name': 'mon', 'name': 'Mon'},
+            {'id': 2, 'cron_name': 'tue', 'name': 'Tue'},
+            {'id': 3, 'cron_name': 'wed', 'name': 'Wed'},
+            {'id': 4, 'cron_name': 'thu', 'name': 'Thu'},
+            {'id': 5, 'cron_name': 'fri', 'name': 'Fri'},
+            {'id': 6, 'cron_name': 'sat', 'name': 'Sat'},
+            {'id': 7, 'cron_name': 'sun', 'name': 'Sun'}
         ]
     )
     # ### end Alembic commands ###

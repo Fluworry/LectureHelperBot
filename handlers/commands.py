@@ -22,12 +22,11 @@ async def start_command(
 
     await message.answer(
         parse_mode='markdown', reply_markup=default_kb,
-        text="Данный бот рассылает уведомления о начале событий "
-        "всем участникам группы.\n"
-        "Пригласите бота в чат, чтобы создать собственную группу."
-        "Если вы хотите вступить в группу, "
-        "перейдите по пригласительной ссылке.\n\n"
-        f"{markdown.link('Исходный код', SOURCE_CODE_LINK)}"
+        text="This bot notifies you about upcoming events.\n"
+        "Invite this bot to the chat to create your own group.\n"
+        "If you want to join the group, follow the invitation link.\n\n"
+        f"{markdown.link('Source code', SOURCE_CODE_LINK)}",
+        disable_web_page_preview=True
     )
 
 

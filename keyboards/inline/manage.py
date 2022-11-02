@@ -9,10 +9,10 @@ manage_own_group_kb = InlineKeyboardMarkup(
     inline_keyboard=[
         [
             InlineKeyboardButton(
-                "Удалить событие", callback_data="delete_event"
+                "Delete the event", callback_data="delete_event"
             ),
             InlineKeyboardButton(
-                "Добавить событие", callback_data="add_event"
+                "Add new event", callback_data="add_event"
             )
         ],
     ]

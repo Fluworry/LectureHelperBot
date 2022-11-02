@@ -23,16 +23,16 @@ async def select_event(
 
     if not events:
         await call.message.answer(
-            text="Вы ещё не создали ни одного события."
+            text="You haven't created any events yet."
         )
         return
 
     switchable_events_kb = generators.get_switchable_kb(
-        events, row_width=3, done_button_text="Удалить"
+        events, row_width=3, done_button_text="Delete"
     )
 
     await call.message.answer(
-        text="Выберите события, которые нужно удалить",
+        text="Select the events you want to delete",
         reply_markup=switchable_events_kb
     )
 
@@ -54,9 +54,10 @@ async def delete_selected_events(
 
         await session.commit()
 
-        await call.answer(text="События удалены")
+        await call.answer(text="Events have been deleted.")
         await call.message.edit_text(
-            text=f"События {', '.join(selected_events.values())} удалены."
+            text=f"Events {', '.join(selected_events.values())} "
+            "have been deleted."
         )
 
         return

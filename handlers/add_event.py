@@ -14,7 +14,7 @@ from services.repositories import Repos, WeekdayRepo, EventRepo
 async def get_event_name(call: types.CallbackQuery):
     await EventStates.waiting_for_name.set()
     await call.message.edit_text(
-        text="Отправьте название события в ответ на это сообщение"
+        text="Send the event name."
     )
 
 
@@ -22,8 +22,8 @@ async def set_event_name(message: types.Message, state: FSMContext):
     await EventStates.waiting_for_description.set()
     await state.update_data({"event_name": message.text})
     await message.reply(
-        text="Отправьте описание события в ответ на это сообщение.\n"
-        "Может содержать ссылки и доп. информацию."
+        text="Send the event description.\n"
+        "May include links and additional information."
     )
 
 
@@ -38,7 +38,7 @@ async def set_event_description(
 
     await message.reply(
         reply_markup=weekdays_kb,
-        text="Выберите день/дни проведения события.\n\n"
+        text="Select event days.\n\n"
     )
 
 
@@ -56,11 +56,11 @@ async def select_event_weekdays(
 
         await call.message.edit_text(
             parse_mode='html',
-            text=f"Выбранные дни: {', '.join(selected_weekdays.values())}\n\n"
-            "Отправьте время для каждого дня в таком порядке, как "
-            "перечислено выше, через запятую.\n\n"
-            "Например вы можете указать <b>8:30, 13:00, 7:05</b> "
-            "для понедельника, четверга и воскресенья соответственно.\n\n"
+            text=f"Selected days: {', '.join(selected_weekdays.values())}\n\n"
+            "Send the time for each day in the order listed above, "
+            "separating them with commas.\n\n"
+            "Example: <b>8:30, 13:00, 7:05</b> "
+            "for Monday, Thursday and Sunday respectively.\n\n"
         )
         return
 
@@ -89,7 +89,7 @@ async def set_event_start_time(
     )
     await session.commit()
 
-    await message.reply(text="Готово")
+    await message.reply(text="Done")
 
 
 def register_handlers(dp: Dispatcher):

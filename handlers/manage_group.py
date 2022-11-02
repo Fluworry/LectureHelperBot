@@ -32,12 +32,12 @@ async def create_group(
 
     await member.bot.send_message(
         chat_id=member.chat.id, parse_mode="html",
-        text="Данный бот рассылает уведомления о начале события.\n\n"
-        "Перейдите по пригласительной ссылке, "
-        f"чтобы получать уведомления о начале событий:\n{invite_link}\n\n"
-        "Если вы пригласили бота в этот чат, "
-        "вы можете добавить новые события в меню бота.\n\n"
-        f"<a href='{SOURCE_CODE_LINK}'>Исходный код</a>"
+        text="This bot notifies you about upcoming events.\n"
+        "Follow the invitation link "
+        f"to start receiving notifications:\n{invite_link}\n\n"
+        "Also you can add new events from the bot menu.\n"
+        f"<a href='{SOURCE_CODE_LINK}'>Source code</a>",
+        disable_web_page_preview=True
     )
 
 
@@ -46,17 +46,17 @@ async def select_group(
 ):
     user = await repo.get_repo(UserRepo).get(message.from_user.id)
 
-    answer_message = "Выберите группу"
+    answer_message = "Select a group"
 
-    if message.text == "Управление группами":
+    if message.text == "Configure groups":
         await EventStates.manage_own_group.set()
         groups_kb = generators.get_groups_kb(user.owned_groups)
-        answer_message = "Выберите группу, чтобы добавить/убрать события"
+        answer_message = "Select a group to add or remove events"
 
-    elif message.text == "Мои группы":
+    elif message.text == "My groups":
         await EventStates.leave_group.set()
         groups_kb = generators.get_groups_kb(user.groups)
-        answer_message = "Нажмите на группу, чтобы выйти из неё"
+        answer_message = "Select a group to leave it"
 
     await message.answer(answer_message, reply_markup=groups_kb)
 
@@ -72,9 +72,9 @@ async def show_group_settings(
         "selected_group_name": selected_group.name
     })
 
-    await call.answer("Вы выбрали группу")
+    await call.answer("You have selected the group")
     await call.message.edit_text(
-        f"Опции для группы {selected_group.name}",
+        f"Options for the group {selected_group.name}",
         reply_markup=manage_own_group_kb
     )
 
@@ -88,7 +88,7 @@ async def leave_group(
     await repo.get_repo(GroupRepo).delete(call.from_user.id, int(call.data))
     await session.commit()
 
-    await call.message.edit_text("Вы вышли из группы")
+    await call.message.edit_text("You have left the group")
 
 
 def register_handlers(dp: Dispatcher):
@@ -99,7 +99,7 @@ def register_handlers(dp: Dispatcher):
 
     dp.register_message_handler(
         select_group, ChatTypeFilter("private"),
-        Text(endswith=("Мои группы", "Управление группами")),
+        Text(endswith=("My groups", "Configure groups")),
         state='*'
     )
 

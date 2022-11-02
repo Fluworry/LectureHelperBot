@@ -14,7 +14,7 @@ def get_groups_kb(groups: list[Group]) -> InlineKeyboardMarkup:
 
 
 def get_switchable_kb(
-    entities: list, row_width=4, done_button_text="Готово"
+    entities: list, row_width=4, done_button_text="Done"
 ) -> InlineKeyboardMarkup:
 
     """ Generates keyboard from db entities """
