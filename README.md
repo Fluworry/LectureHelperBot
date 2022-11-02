@@ -1,5 +1,5 @@
 # Event Reminder Bot
-This bot notifies you about upcoming events, conferences, courses, or webinars.
+This bot notifies you about upcoming events, conferences, courses or webinars.
 
 ![image](https://user-images.githubusercontent.com/95584571/199554190-a7ecaaae-3eac-4082-b531-3d290522adbf.png)
 
